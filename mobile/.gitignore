@@ -1,0 +1,9 @@
+# Expo / React Native project-local ignores (the root .gitignore covers the rest)
+node_modules/
+coverage/
+.expo/
+dist/
+web-build/
+android/
+ios/
+assets/model-*/

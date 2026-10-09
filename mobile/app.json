@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Reavailable",
+    "slug": "reavailable",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "reavailable",
+    "ios": {
+      "bundleIdentifier": "uz.reavailable.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "uz.reavailable.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#1F6F5C"
+      }
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Reavailable uses the microphone only to hear the English voice commands (next, repeat, pause, resume) while voice control is on.",
+          "recordAudioAndroid": true,
+          "enableBackgroundPlayback": true,
+          "enableBackgroundRecording": false
+        }
+      ],
+      "expo-document-picker",
+      "expo-secure-store",
+      [
+        "react-native-vosk",
+        {
+          "models": ["assets/model-en-us"],
+          "iOSMicrophonePermission": "Reavailable uses the microphone only to hear the English voice commands while voice control is on."
+        }
+      ]
+    ]
+  }
+}
