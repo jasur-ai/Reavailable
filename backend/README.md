@@ -141,4 +141,6 @@ app/
   security.py      token generation, digests, constant-time comparison
   config.py        settings (AUDIOBOOK_ environment variables)
 tests/             pytest suite (chunking, providers, API, processing, retention, config)
+Dockerfile        container image (production mode by default, non-root, /data volume)
+pyproject.toml    package metadata, dependencies, tool settings
 ```
