@@ -1,0 +1,42 @@
+# ---- Python (backend) ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+backend/data/
+
+# ---- Node / Expo (mobile) ----
+node_modules/
+mobile/coverage/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/android/
+mobile/ios/
+# Offline voice model (~40 MB), fetched by mobile/scripts/fetch-vosk-model.sh
+mobile/assets/model-*/
+
+# ---- Secrets and local configuration ----
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+*.pem
+
+# ---- Editors and OS files ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
