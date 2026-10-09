@@ -159,3 +159,6 @@ tests/
   deliberate decision. The access token is device-only, so a restored backup should keep its audio
   for offline playback but not sync. This has not been tested on a device.
 - `npm audit` reports findings in the dependency tree. They have not been triaged yet.
+- `npm ci` warns that ESLint 9 is no longer supported. The ESLint plugins used by `eslint-config-expo` do not
+  support ESLint 10 yet (see [PLAN_REVIEW](../docs/PLAN_REVIEW.md#4-open-items)).
+- The app icon and splash screen are Expo defaults.

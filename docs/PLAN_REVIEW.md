@@ -196,4 +196,8 @@ These are not done. Each one says why.
 - Library persistence rewrites one JSON document. Fine for a personal library, not for thousands of books.
 - `npm audit` reports 54 findings (12 moderate, 42 high) in the dependency tree. They are not triaged.
   `npm audit fix --force` must not be used, because it can break the Expo pins.
+- ESLint stays on version 9. `npm ci` warns that eslint@9 is no longer supported, and ESLint 10 is available. The
+  plugins that `eslint-config-expo` uses (`eslint-plugin-import`, `eslint-plugin-react`, `eslint-plugin-react-hooks`)
+  do not yet declare ESLint 10 support, so the upgrade would fail with a peer-dependency conflict. Upgrade once they do.
+- The app icon and splash screen use Expo's defaults. Branding assets are not in the repository.
 - No license has been chosen. The repository has no license file, which is an owner decision.

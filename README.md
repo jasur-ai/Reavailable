@@ -93,7 +93,8 @@ cd mobile && E2E_API_BASE_URL=http://127.0.0.1:8000 npm run test:e2e
 - The phone keeps the book's token in the device keychain and its audio in the app's own storage.
 
 Deployment must add HTTPS and per-IP rate limiting at a reverse proxy. Both are described in
-[backend/README.md](backend/README.md#deployment-requirements).
+[backend/README.md](backend/README.md#deployment-requirements). To report a vulnerability, see
+[SECURITY.md](SECURITY.md).
 
 ## Documentation
 
