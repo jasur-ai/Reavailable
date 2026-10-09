@@ -1,7 +1,9 @@
 name: Android test build
 
-# Builds an installable Android APK on a GitHub-hosted runner. Run it manually:
-#   Actions > "Android test build" > Run workflow
+# Builds an installable Android APK on a GitHub-hosted runner.
+#   - Runs automatically when a push changes mobile/ or this workflow file.
+#   - Runs manually from Actions > "Android test build" > Run workflow (only after this file is on
+#     the default branch, which is how GitHub lists manual workflows).
 # The APK is attached to the run as an artifact. If publish_release is set, it is also attached
 # to a GitHub pre-release.
 #
@@ -9,6 +11,10 @@ name: Android test build
 # project). It is suitable for sideloading and testing, not for the Play Store.
 
 on:
+  push:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/android-apk.yml"
   workflow_dispatch:
     inputs:
       publish_release:
