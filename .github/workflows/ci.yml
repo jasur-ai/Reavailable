@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (lint, types, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint and format
+        run: |
+          ruff check app tests
+          ruff format --check app tests
+
+      - name: Type check
+        run: mypy
+
+      - name: Tests with coverage
+        run: pytest -q --cov=app
+
+  mobile:
+    name: Mobile (types, lint, unit tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Type check, lint and unit tests
+        run: npm run check
+
+  end-to-end:
+    name: End-to-end (live backend, fake speech)
+    needs: [backend, mobile]
+    runs-on: ubuntu-latest
+    env:
+      AUDIOBOOK_TTS_PROVIDER: fake
+      AUDIOBOOK_ENVIRONMENT: development
+      E2E_API_BASE_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend
+        working-directory: backend
+        run: pip install -e .
+
+      - name: Start backend
+        working-directory: backend
+        env:
+          AUDIOBOOK_DATA_DIR: ${{ runner.temp }}/audiobook-data
+        run: |
+          set -euo pipefail
+          python -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 \
+            > "$RUNNER_TEMP/backend.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Backend did not become healthy:" >&2
+          cat "$RUNNER_TEMP/backend.log" >&2
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+
+      - name: Run end-to-end tests
+        working-directory: mobile
+        run: npm run test:e2e
+
+      - name: Show backend log on failure
+        if: failure()
+        run: cat "$RUNNER_TEMP/backend.log" || true
