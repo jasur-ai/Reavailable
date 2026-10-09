@@ -72,7 +72,9 @@ Against a running backend with the fake speech provider:
 4. An empty transcript is refused with a validation error, and no book is created.
 5. A wrong access token gets `job_not_found`.
 
-## 2. Verified in the sandbox
+## 2. Verified
+
+### In the sandbox
 
 - Every command in §1 was run. The results are in §1.
 - The final backend build was run with uvicorn on `0.0.0.0:8000`, and the end-to-end suite passed against it
@@ -91,23 +93,44 @@ Against a running backend with the fake speech provider:
   existing model is kept), the right checksum, a bad archive (the existing model is kept), a skip when a model
   exists, and a missing file (curl exit 37, nothing left behind).
 
+- The npm audit findings are not in the Android JS bundle. `expo export --platform android --no-bytecode`
+  produced one bundle with none of `node-forge`, `braces`, `micromatch`, `sprintf`, `argparse`, `js-yaml` or
+  `xcode`. The string `uuid` appears only as Expo's own module.
+
+### On GitHub-hosted runners
+
+- **CI** (`.github/workflows/ci.yml`) passed on commit `1320a8c` (run `37965656119`): the backend, mobile,
+  end-to-end and container jobs.
+- **Android APK** (`android-build.yml`) builds a release APK on an Ubuntu runner (runs `37964171967` and
+  `37965656458`). The build checks the APK itself: the Vosk model is inside it, `classes.dex` and the signature
+  are present, the package name is `uz.reavailable.app`, the app requests `RECORD_AUDIO` and `INTERNET`, and it
+  does not request `SYSTEM_ALERT_WINDOW`, `VIBRATE` or the external-storage permissions.
+- **Backend container** (`container` job in CI): the image builds, refuses to start in production without
+  credentials, starts with the documented production settings and passes the health check. In development mode it
+  runs as uid 10001 and accepts a job with `202`.
+- **Model download**: the CI runner downloads the Vosk archive from `alphacephei.com`. The step succeeds. The
+  checksum is not pinned, so the download is not checked against a known value.
+- **Production settings, locally**: with the documented production settings, `POST /api/v1/jobs` returns `401`
+  without the API key and `202` with it.
+
 ## 3. Not verified
 
 These were **not** tested in the sandbox. Do not report them as working.
 
 | Area | Why not | What would verify it |
 | --- | --- | --- |
-| On-device voice recognition (react-native-vosk, the four commands) | Needs a native build and a microphone | Manual checklist, §4, step 6 |
+| On-device voice recognition (react-native-vosk, the four commands) | Needs a phone and a microphone | Manual checklist, §4, step 6 |
 | Recognition in noise and speaker echo | Needs a real room and speaker | Manual checklist, §4, step 6 |
-| Background playback and lock-screen controls | Needs a device | Manual checklist, §4, step 5 |
-| Live Azure calls (Uzbek quality, Cyrillic output, quotas, errors with a real key) | No credentials and no network access in the sandbox | Manual checklist, §4, step 3 |
-| Native builds for iOS and Android, including the `react-native-vosk` plugin | Needs Xcode or Android SDK | `npm run android` / `npm run ios` on a machine with the SDK |
-| Vosk model download from `alphacephei.com` | The host was not reachable from the sandbox | Run the script with the official URL and record its SHA-256 |
+| Background playback and lock-screen controls | Needs a phone | Manual checklist, §4, step 5 |
+| Installing and running the Android APK on a phone | The APK is built on a GitHub runner, but no phone was used | Manual checklist, §4, steps 1 to 4 |
+| Live Azure calls (Uzbek quality, Cyrillic output, quotas, errors with a real key) | No credentials and no network access to Azure in the sandbox | Manual checklist, §4, step 3 |
+| iOS build | Needs a Mac with Xcode and an Apple developer account for signing | `npm run ios` on a Mac |
+| Vosk model checksum | The CI runner downloads the model, but the checksum is not pinned, so the download is not checked against a known value | Record the archive SHA-256 from the official release and set `VOSK_MODEL_SHA256` |
+| Hosted backend (HTTPS, persistent volume, rate limit) | No hosting account and no public address from the sandbox | Deploy `backend/Dockerfile`, check `https://<host>/api/v1/health`, then run §4 against it |
+| Release signing | The APK uses the debug keystore, which is fine for testing only | Create a release keystore and configure signing before wider distribution |
 | File picker (`transcriptFile.ts`) | Native picker, not unit-tested | Manual checklist, §4, step 4 |
 | Restore from OS backups | Needs devices and a backup | Manual, if the backup policy is kept |
 | `npx expo install --check` | Needs access to Expo's API, which the sandbox blocks (the attempt failed with a socket error). The versions were compared by hand instead (§2) | Run it once on a machine with network access |
-| GitHub Actions workflow | Not run on GitHub from the sandbox. Each job's commands were run locally | First CI run on the pull request |
-| Docker image | Docker is not available in the sandbox, and no Dockerfile is provided | Not planned in this iteration |
 | Behaviour under real rate limits | Rate limiting belongs to the reverse proxy, which is not part of this repository | Load test in the deployment environment |
 
 ## 4. Manual checklist for a device
@@ -117,7 +140,8 @@ Record the results in the pull request.
 
 1. **Model.** Run `scripts/fetch-vosk-model.sh` with the default URL. Record the printed SHA-256, check it
    against the official release, then set `VOSK_MODEL_SHA256` to that value for later runs.
-2. **Build.** `npm run android` and `npm run ios`. Grant the microphone permission on first use.
+2. **Build.** Install the Android test APK from the Releases page (check its SHA-256 first), or run
+   `npm run android`. For iOS, run `npm run ios` on a Mac. Grant the microphone permission on first use.
 3. **Live Azure.** Start the backend with `AUDIOBOOK_TTS_PROVIDER=azure`, a real key and region. Create a
    short Uzbek book. Listen to both voices. Note any Cyrillic text and any wrong pronunciation.
 4. **Sync.** Add a book by pasting text and by picking a `.txt` file. Check that the parts download and that

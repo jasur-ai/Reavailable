@@ -178,9 +178,11 @@ These are not done. Each one says why.
 **Needs a device or a live service (cannot be done in the sandbox):**
 - Voice recognition on a device: accuracy of the four commands, noise, and echo (§2.7).
 - Background playback and lock-screen controls on iOS and Android.
-- Native builds for iOS and Android with `react-native-vosk`. Expo Go cannot run voice control.
+- Installing the Android APK on a phone. It is built on GitHub runners but has not been tested on a device. The iOS
+  build needs a Mac and an Apple developer account. Expo Go cannot run voice control.
 - Live Azure calls: Uzbek pronunciation, Cyrillic output, quotas, cost, and region choice.
-- The Vosk model download from `alphacephei.com`, which the sandbox cannot reach. The checksum is not pinned.
+- The Vosk model checksum is not pinned. The CI runner downloads the model from `alphacephei.com`. Take the value
+  from the official release and set it as `VOSK_MODEL_SHA256`.
 
 **Deployment decisions for the operator:**
 - Rate limiting at the reverse proxy. The configuration is not provided.
@@ -189,13 +191,15 @@ These are not done. Each one says why.
 - OS backup policy. Backups are left at the platform default. The token is device-only, so a restored backup
   should not sync. This is untested.
 - The backend is a single instance with SQLite. Moving to several instances needs a shared database and a queue.
-- No Dockerfile. Docker is not available in the sandbox, so an image could not be built or tested.
+- Hosting. `backend/Dockerfile` builds the server image, and CI builds and smoke-tests it. Choosing the host, the
+  HTTPS domain, the rate limit and the persistent volume is the operator's step.
+- Release signing. The Android APK is signed with the Expo debug keystore. Distribution beyond testing needs a
+  release keystore.
 
 **Product and code follow-ups:**
 - Extra voice commands from the plan's open questions (back, faster, slower). Not implemented.
 - Library persistence rewrites one JSON document. Fine for a personal library, not for thousands of books.
-- `npm audit` reports 54 findings (12 moderate, 42 high) in the dependency tree. They are not triaged.
-  `npm audit fix --force` must not be used, because it can break the Expo pins.
+- `npm audit` reports 54 findings. They come from four advisories, all in build, test and development tooling. `braces`, `node-forge` and `sprintf-js` have no fixed release yet. `uuid` is fixed only in a newer major version, and the old copy comes from Expo's iOS build tooling. `expo export` shows that none of them is in the app bundle. Do not run `npm audit fix --force`.
 - ESLint stays on version 9. `npm ci` warns that eslint@9 is no longer supported, and ESLint 10 is available. The
   plugins that `eslint-config-expo` uses (`eslint-plugin-import`, `eslint-plugin-react`, `eslint-plugin-react-hooks`)
   do not yet declare ESLint 10 support, so the upgrade would fail with a peer-dependency conflict. Upgrade once they do.

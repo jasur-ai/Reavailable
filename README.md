@@ -17,33 +17,69 @@ recognizes Uzbek speech.
 4. **Listen offline.** Say **next**, **repeat**, **pause**, or **resume**. Recognition runs on the device
    with a closed English grammar, so nothing is sent to a server to be recognized.
 
+## Get the app
+
+**Android (test build).** Download `app-release.apk` and `app-release.apk.sha256` from the
+[Releases page](https://github.com/jasur-ai/Reavailable/releases). Check the download with
+`sha256sum -c app-release.apk.sha256`, allow installs from the app you open the file with, and install it.
+The APK is debug-signed, so it is for testing and sideloading, not for the Play Store. It needs a running
+Reavailable server (see below). It has not been installed and tested on a phone yet.
+
+**iOS.** Not built. Building for iPhone needs an Apple developer account for signing.
+
+## Run your own server
+
+The app needs a Reavailable backend that is reachable over HTTPS. The backend is in `backend/` and builds
+into a container image. Run it on any host that runs containers (a VPS, or a platform such as Render or
+Railway that can build from a Dockerfile):
+
+```bash
+docker build -t reavailable-backend backend
+docker run --detach --publish 8000:8000 --volume reavailable-data:/data \
+  --env AUDIOBOOK_API_KEY='choose-a-long-random-value' \
+  --env AUDIOBOOK_TTS_PROVIDER=azure \
+  --env AUDIOBOOK_AZURE_SPEECH_KEY='your-azure-speech-key' \
+  --env AUDIOBOOK_AZURE_SPEECH_REGION='your-azure-region' \
+  reavailable-backend
+```
+
+The image runs in production mode. It refuses to start until the API key and the Azure settings are set.
+The `fake` speech provider is for tests only and is refused in production mode. Put the container behind
+HTTPS and a rate limit. Then open **Settings** in the app, enter the HTTPS address and the API key, and
+test the connection. [backend/README.md](backend/README.md) lists every setting and the deployment
+requirements.
+
 ## Status
 
 | Part | State | How it was checked |
 | --- | --- | --- |
 | Backend API, chunking, synthesis pipeline, acknowledgement, retention | Complete | 110 pytest tests, ruff, mypy, live end-to-end run |
+| Backend container image | Built and smoke-tested in CI | Build, production guard, health check, non-root user, job creation |
 | Mobile sync (download, verify, acknowledge, resume, retry) | Complete | Unit tests, live end-to-end run |
 | Mobile playback logic | Complete | 32 playback tests |
 | Voice commands (logic) | Complete | Unit tests with fakes |
+| Android release APK | Built on a GitHub runner | Model included, package name and permissions checked in the workflow |
 | Voice recognition on a phone | **Not verified** | Needs a device; see [docs/TESTING.md](docs/TESTING.md) |
 | Background playback and lock-screen controls | **Not verified** | Needs a device |
-| Live Azure speech calls | **Not verified** | Needs credentials and network access |
-| Native iOS and Android builds | **Not verified** | Needs the native SDKs |
+| Installing and running the APK on a phone | **Not verified** | Needs a device |
+| Live Azure speech calls | **Not verified** | Needs an Azure key and network access |
+| iOS build | **Not built** | Needs an Apple developer account |
 
-The full list of open items and their reasons is in [docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md#4-open-items).
+Continuous integration (`.github/workflows/ci.yml`) passed for the backend, mobile, end-to-end and container jobs on
+commit `1320a8c`. The open items and their reasons are in [docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md#4-open-items).
 
 ## Repository layout
 
 ```
-backend/      FastAPI service (Python 3.11+): API, chunking, Azure and fake speech providers, storage, tests
+backend/      FastAPI service (Python 3.11+) and its container image: API, chunking, speech providers, storage, tests
 mobile/       Expo SDK 57 app (React Native, TypeScript): sync, playback, voice, UI, tests
 docs/         Architecture, plan review, testing report
-.github/      Continuous integration workflow
+.github/      CI workflow and the Android build and release workflows
 ```
 
-## Quick start
+## Quick start (development)
 
-### Backend (development, no cloud account needed)
+### Backend
 
 ```bash
 cd backend
@@ -52,8 +88,9 @@ pip install -e ".[dev]"
 uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000
 ```
 
-Open http://localhost:8000/docs. The default speech provider is `fake`, which produces deterministic audio
-for testing. See [backend/README.md](backend/README.md) for configuration, the API, and deployment requirements.
+Open http://localhost:8000/docs. The default speech provider is `fake`, which produces a quiet test tone
+instead of speech, so the whole pipeline runs without cloud credentials. See
+[backend/README.md](backend/README.md) for configuration, the API, and deployment requirements.
 
 ### Mobile app
 
@@ -91,6 +128,8 @@ cd mobile && E2E_API_BASE_URL=http://127.0.0.1:8000 npm run test:e2e
   fake speech provider.
 - Logs contain identifiers, part positions and error codes, never transcript text.
 - The phone keeps the book's token in the device keychain and its audio in the app's own storage.
+- The Android app requests only the permissions it uses: internet, microphone (for voice commands), audio
+  playback, and the media playback service.
 
 Deployment must add HTTPS and per-IP rate limiting at a reverse proxy. Both are described in
 [backend/README.md](backend/README.md#deployment-requirements). To report a vulnerability, see
@@ -101,16 +140,17 @@ Deployment must add HTTPS and per-IP rate limiting at a reverse proxy. Both are 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, data lifecycle, backend and mobile design, key decisions
 - [docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md): plan requirements, review findings and fixes, deviations, open items
 - [docs/TESTING.md](docs/TESTING.md): what is tested, what is verified, what is not, a manual device checklist
-- [backend/README.md](backend/README.md): backend setup, configuration, API, deployment
-- [mobile/README.md](mobile/README.md): app setup, scripts, voice model, storage, limitations
+- [backend/README.md](backend/README.md): backend setup, configuration, API, container, deployment
+- [mobile/README.md](mobile/README.md): app setup, Android test build, scripts, voice model, storage, limitations
 
 ## Known limitations
 
-- Voice recognition, background playback and live Azure output have not been verified on a device or
-  against Azure.
-- The backend is a single instance backed by SQLite.
+- Voice recognition, background playback, installation on a phone and live Azure output have not been verified.
+- The Android APK is debug-signed. A Play Store release needs a release keystore.
+- The backend is a single instance backed by SQLite. A hosted deployment needs a persistent volume.
 - The app library is stored as one JSON document, which suits a personal library.
-- `npm audit` reports findings in the dependency tree that have not been triaged yet.
+- The Vosk model checksum is not pinned, so the model download is not verified against a known value.
+- `npm audit` reports 54 findings. They come from four advisories, all in build, test and development tooling. `braces`, `node-forge` and `sprintf-js` have no fixed release yet. `uuid` is fixed only in a newer major version, and the old copy comes from Expo's iOS build tooling. `expo export` shows that none of them is in the app bundle. Do not run `npm audit fix --force`.
 
 ## License
 

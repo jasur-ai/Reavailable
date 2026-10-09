@@ -28,6 +28,29 @@ Open `http://localhost:8000/docs` for the interactive API reference. The default
 `fake`, which produces deterministic audio without any external service. It is refused in
 production.
 
+## Container image
+
+`Dockerfile` builds a slim image that runs as a non-root user (uid 10001). Build and run it from this
+directory:
+
+```bash
+docker build -t reavailable-backend .
+docker run --detach --publish 8000:8000 --volume reavailable-data:/data \
+  --env AUDIOBOOK_API_KEY='choose-a-long-random-value' \
+  --env AUDIOBOOK_TTS_PROVIDER=azure \
+  --env AUDIOBOOK_AZURE_SPEECH_KEY='your-azure-speech-key' \
+  --env AUDIOBOOK_AZURE_SPEECH_REGION='your-azure-region' \
+  reavailable-backend
+```
+
+- The image starts in production mode. It exits at startup until `AUDIOBOOK_API_KEY` and the Azure settings
+  are set. CI checks both the refusal and a start with the settings above.
+- `/data` holds the database and temporary audio. Mount a volume there to keep them across restarts.
+- `PORT` sets the listening port (default `8000`). Hosting platforms that pass the port in `PORT` work
+  without changes.
+- The health endpoint is `GET /api/v1/health`. The image's health check uses it.
+- `.dockerignore` keeps `.env` files, keys and test data out of the image.
+
 ## Configuration
 
 All settings come from environment variables with the `AUDIOBOOK_` prefix (or from `.env`). The

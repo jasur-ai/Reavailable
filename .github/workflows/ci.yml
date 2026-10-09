@@ -168,9 +168,33 @@ jobs:
           test "$status" = "202"
           grep -q access_token create.json
 
-      - name: Show container log on failure
+      - name: Start in production mode with the documented settings
+        run: |
+          docker run --detach --name api-prod --publish 8001:8000 \
+            --env AUDIOBOOK_API_KEY=ci-only-api-key \
+            --env AUDIOBOOK_TTS_PROVIDER=azure \
+            --env AUDIOBOOK_AZURE_SPEECH_KEY=ci-placeholder-key \
+            --env AUDIOBOOK_AZURE_SPEECH_REGION=westeurope \
+            reavailable-backend:ci
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8001/api/v1/health; then
+              echo
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs api-prod
+          exit 1
+
+      - name: Show container logs on failure
         if: failure()
-        run: docker logs api || true
+        run: |
+          docker logs api || true
+          docker logs api-prod || true
+
+      - name: Remove the production check container
+        if: always()
+        run: docker rm --force api-prod || true
 
       - name: Remove the container
         if: always()

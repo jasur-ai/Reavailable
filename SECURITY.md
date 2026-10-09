@@ -17,9 +17,9 @@ Include the affected component (backend or mobile), the steps to reproduce, and 
   with the fake speech provider.
 - The offline voice model is downloaded over HTTPS. Set `VOSK_MODEL_SHA256` to pin the archive
   (see [mobile/README.md](mobile/README.md)).
-- Dependency findings from `npm audit` have not been triaged yet
-  (see [docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md#4-open-items)). Do not run `npm audit fix --force`, because it
-  can break the pinned Expo versions.
+- `npm audit` reports 54 findings from four advisories, all in build, test and development tooling. None is in the
+  app bundle. See [docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md#4-open-items). Do not run `npm audit fix --force`,
+  because it can break the pinned Expo versions.
 
 ## Supported versions
 
