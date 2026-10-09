@@ -58,7 +58,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       <Card>
         <Text style={typography.heading}>Server</Text>
         <Text style={typography.small}>
-          The address of the Reavailable server, for example http://192.168.1.20:8000 on your local network.
+          The HTTPS address of your Reavailable server, for example https://audiobooks.example.com. Plain http:// works only in development builds.
         </Text>
         <Field
           label="Server address"
