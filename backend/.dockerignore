@@ -1,0 +1,19 @@
+# Keep local state, secrets and build leftovers out of the image.
+.venv
+**/__pycache__
+*.egg-info
+data
+tests
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+coverage
+htmlcov
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+Dockerfile
+.dockerignore

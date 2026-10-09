@@ -119,3 +119,59 @@ jobs:
       - name: Show backend log on failure
         if: failure()
         run: cat "$RUNNER_TEMP/backend.log" || true
+
+  container:
+    name: Backend container (build and smoke test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build --tag reavailable-backend:ci backend
+
+      - name: Refuse to start in production without credentials
+        run: |
+          set +e
+          docker run --rm reavailable-backend:ci > startup.log 2>&1
+          code=$?
+          set -e
+          cat startup.log
+          if [ "$code" -eq 0 ]; then
+            echo "error: the image started without an API key and speech settings" >&2
+            exit 1
+          fi
+
+      - name: Start in development mode with the fake speech provider
+        run: |
+          docker run --detach --name api --publish 8000:8000 \
+            --env AUDIOBOOK_ENVIRONMENT=development reavailable-backend:ci
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/health; then
+              echo
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs api
+          exit 1
+
+      - name: Check the smoke-test behaviour
+        run: |
+          set -euo pipefail
+          test "$(docker exec api id -u)" = "10001"
+          status=$(curl -s -o create.json -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d '{"title":"Smoke test","transcript":"Salom dunyo. Bu qisqa sinov matni."}' \
+            http://127.0.0.1:8000/api/v1/jobs)
+          echo "POST /api/v1/jobs -> $status"
+          test "$status" = "202"
+          grep -q access_token create.json
+
+      - name: Show container log on failure
+        if: failure()
+        run: docker logs api || true
+
+      - name: Remove the container
+        if: always()
+        run: docker rm --force api || true
