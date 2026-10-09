@@ -20,7 +20,7 @@ recognizes Uzbek speech.
 ## Get the app
 
 **Android (test build).** Download `app-release.apk` and `app-release.apk.sha256` from the
-[Releases page](https://github.com/jasur-ai/Reavailable/releases). Check the download with
+[`android-v0.1.0-test1` pre-release](https://github.com/jasur-ai/Reavailable/releases/tag/android-v0.1.0-test1) (about 150 MB). Check the download with
 `sha256sum -c app-release.apk.sha256`, allow installs from the app you open the file with, and install it.
 The APK is debug-signed, so it is for testing and sideloading, not for the Play Store. It needs a running
 Reavailable server (see below). It has not been installed and tested on a phone yet.
@@ -58,7 +58,7 @@ requirements.
 | Mobile sync (download, verify, acknowledge, resume, retry) | Complete | Unit tests, live end-to-end run |
 | Mobile playback logic | Complete | 32 playback tests |
 | Voice commands (logic) | Complete | Unit tests with fakes |
-| Android release APK | Built on a GitHub runner | Model included, package name and permissions checked in the workflow |
+| Android test APK | Published as a pre-release, built on a GitHub runner | Model included, package name and permissions checked in the build |
 | Voice recognition on a phone | **Not verified** | Needs a device; see [docs/TESTING.md](docs/TESTING.md) |
 | Background playback and lock-screen controls | **Not verified** | Needs a device |
 | Installing and running the APK on a phone | **Not verified** | Needs a device |

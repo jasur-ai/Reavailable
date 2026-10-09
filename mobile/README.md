@@ -50,8 +50,8 @@ Settings, so there is no `.env` file for the mobile app.
 
 ## Android test build
 
-The test APK is published on the [Releases page](https://github.com/jasur-ai/Reavailable/releases) as a
-pre-release (`android-v*`). Each release has two files: `app-release.apk` and `app-release.apk.sha256`.
+The test APK is published as a pre-release on the [Releases page](https://github.com/jasur-ai/Reavailable/releases).
+The current one is [`android-v0.1.0-test1`](https://github.com/jasur-ai/Reavailable/releases/tag/android-v0.1.0-test1). Pre-releases use the tag pattern `android-v*`. Each release has two files: `app-release.apk` and `app-release.apk.sha256`.
 
 1. Download both files to the phone or to a computer.
 2. Check the APK: `sha256sum -c app-release.apk.sha256`.

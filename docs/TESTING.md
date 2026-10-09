@@ -108,6 +108,9 @@ Against a running backend with the fake speech provider:
 - **Backend container** (`container` job in CI): the image builds, refuses to start in production without
   credentials, starts with the documented production settings and passes the health check. In development mode it
   runs as uid 10001 and accepts a job with `202`.
+- **Release** (`android-release.yml`): the tag `android-v0.1.0-test1` (commit `1320a8c`) built the APK and published
+  it as a pre-release with `app-release.apk.sha256` (run `37966899132`). The sandbox cannot download release assets,
+  so the file itself was not re-checked here. The checks in the build run on the same commit.
 - **Model download**: the CI runner downloads the Vosk archive from `alphacephei.com`. The step succeeds. The
   checksum is not pinned, so the download is not checked against a known value.
 - **Production settings, locally**: with the documented production settings, `POST /api/v1/jobs` returns `401`
