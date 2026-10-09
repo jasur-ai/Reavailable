@@ -14,7 +14,13 @@
       "package": "uz.reavailable.app",
       "adaptiveIcon": {
         "backgroundColor": "#1F6F5C"
-      }
+      },
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "plugins": [
       [
