@@ -2,7 +2,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { PlaybackSnapshot } from '../../core/playback/playbackController';
 import type { BookRecord } from '../../core/types';
 import type { VoiceSnapshot } from '../../core/voice/voiceService';
-import { Badge, Button, Card, Notice, ProgressBar } from '../components/common';
+import { Badge, Button, Card, Notice, ProgressBar, RoundButton } from '../components/common';
 import {
   partStatus,
   playbackMessage,
@@ -11,7 +11,7 @@ import {
   voiceMessage,
   type Tone,
 } from '../presentation';
-import { colors, radius, spacing, TOUCH_TARGET, typography } from '../theme';
+import { colors, elevation, radius, spacing, TOUCH_TARGET, typography } from '../theme';
 import { useTranslate } from '../TranslateContext';
 
 export interface PlayerScreenProps {
@@ -77,28 +77,31 @@ export function PlayerScreen(props: PlayerScreenProps) {
               <Badge label={currentStatus.label} tone={currentStatus.tone} />
             ) : null}
             <View style={styles.controls}>
-              <Button
+              <RoundButton
                 label={t('player.repeat')}
-                variant="secondary"
+                glyph="↺"
+                tone="secondary"
+                size={56}
                 onPress={props.onRepeat}
                 disabled={playback.status === 'idle' || playback.status === 'waiting'}
                 accessibilityHint={t('player.repeatHint')}
-                style={styles.control}
               />
-              <Button
+              <RoundButton
                 label={playPauseLabel}
+                glyph={isPlaying ? '❚❚' : '▶'}
+                size={84}
                 onPress={props.onPlayPause}
                 disabled={playback.status === 'idle'}
                 accessibilityHint={isPlaying ? t('player.pauseHint') : t('player.playHint')}
-                style={styles.control}
               />
-              <Button
+              <RoundButton
                 label={t('player.next')}
-                variant="secondary"
+                glyph="»"
+                tone="secondary"
+                size={56}
                 onPress={props.onNext}
                 disabled={playback.status === 'idle'}
                 accessibilityHint={t('player.nextHint')}
-                style={styles.control}
               />
             </View>
             {canRetry ? <Button label={t('player.retryDownload')} variant="secondary" onPress={props.onRetry} /> : null}
@@ -172,13 +175,12 @@ function PartRow({
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingBottom: spacing.xl },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.lg },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl, backgroundColor: colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.lg, backgroundColor: colors.background },
   header: { gap: spacing.md, marginBottom: spacing.sm },
   topRow: { flexDirection: 'row', justifyContent: 'flex-start' },
-  status: { fontSize: 17, fontWeight: '600' },
-  controls: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
-  control: { flex: 1, minHeight: 56 },
+  status: { fontSize: 17, lineHeight: 24, fontWeight: '600', textAlign: 'center' },
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xl, marginVertical: spacing.md },
   voiceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   flex: { flex: 1 },
   sectionTitle: { ...typography.heading, marginTop: spacing.md },
@@ -190,12 +192,11 @@ const styles = StyleSheet.create({
     minHeight: TOUCH_TARGET,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     backgroundColor: colors.surface,
     marginTop: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    ...elevation.card,
   },
-  partRowSelected: { borderColor: colors.primary, borderWidth: 2 },
+  partRowSelected: { backgroundColor: colors.primarySoft },
   pressed: { opacity: 0.8 },
 });

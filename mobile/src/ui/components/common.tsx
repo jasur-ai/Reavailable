@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -9,9 +9,16 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
-import { colors, radius, spacing, TOUCH_TARGET, typography } from '../theme';
+import { BUTTON_HEIGHT, colors, elevation, radius, spacing, TOUCH_TARGET, typography } from '../theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+
+const BUTTON_PALETTE: Record<ButtonVariant, { background: string; pressed: string; text: string; border: string }> = {
+  primary: { background: colors.primary, pressed: colors.primaryPressed, text: colors.primaryText, border: colors.primary },
+  secondary: { background: colors.surface, pressed: colors.primarySoft, text: colors.primary, border: colors.border },
+  danger: { background: colors.danger, pressed: '#8E1D17', text: colors.primaryText, border: colors.danger },
+  ghost: { background: 'transparent', pressed: colors.surfaceAlt, text: colors.primary, border: 'transparent' },
+};
 
 export function Button({
   label,
@@ -42,26 +49,83 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        { backgroundColor: isDisabled ? colors.disabled : palette.background, borderColor: palette.border },
-        pressed && !isDisabled ? styles.pressed : null,
+        {
+          backgroundColor: isDisabled
+            ? variant === 'ghost' || variant === 'secondary'
+              ? 'transparent'
+              : colors.disabled
+            : pressed
+              ? palette.pressed
+              : palette.background,
+          borderColor: isDisabled && variant === 'secondary' ? colors.border : palette.border,
+        },
+        variant === 'primary' && !isDisabled ? elevation.card : null,
         style,
       ]}
     >
       {busy ? (
         <ActivityIndicator color={palette.text} />
       ) : (
-        <Text style={[styles.buttonLabel, { color: palette.text }]}>{label}</Text>
+        <Text style={[styles.buttonLabel, { color: isDisabled && variant !== 'primary' ? colors.disabled : palette.text }]}>
+          {label}
+        </Text>
       )}
     </Pressable>
   );
 }
 
-const BUTTON_PALETTE: Record<ButtonVariant, { background: string; text: string; border: string }> = {
-  primary: { background: colors.primary, text: colors.primaryText, border: colors.primary },
-  secondary: { background: colors.surface, text: colors.primary, border: colors.primary },
-  danger: { background: colors.danger, text: colors.primaryText, border: colors.danger },
-  ghost: { background: 'transparent', text: colors.primary, border: 'transparent' },
-};
+/** Large circular control, used for play/pause in the player. */
+export function RoundButton({
+  label,
+  glyph,
+  onPress,
+  disabled = false,
+  size = 72,
+  tone = 'primary',
+  accessibilityHint,
+}: {
+  label: string;
+  glyph: string;
+  onPress: () => void;
+  disabled?: boolean;
+  size?: number;
+  tone?: 'primary' | 'secondary';
+  accessibilityHint?: string;
+}) {
+  const filled = tone === 'primary';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.round,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: disabled ? colors.neutralSoft : filled ? (pressed ? colors.primaryPressed : colors.primary) : colors.surface,
+          borderWidth: filled ? 0 : 1,
+          borderColor: colors.border,
+        },
+        filled && !disabled ? elevation.raised : elevation.card,
+      ]}
+    >
+      <Text
+        style={{
+          fontSize: size * 0.36,
+          color: disabled ? colors.disabled : filled ? colors.primaryText : colors.primary,
+          fontWeight: '700',
+        }}
+      >
+        {glyph}
+      </Text>
+    </Pressable>
+  );
+}
 
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={[styles.card, style]}>{children}</View>;
@@ -85,6 +149,7 @@ export function Field({
   multiline?: boolean;
   minHeight?: number;
 } & Omit<TextInputProps, 'value' | 'onChangeText' | 'multiline'>) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -95,7 +160,14 @@ export function Field({
         multiline={multiline}
         textAlignVertical={multiline ? 'top' : 'center'}
         placeholderTextColor={colors.muted}
-        style={[styles.input, multiline ? { minHeight: minHeight ?? 160 } : null, error ? styles.inputError : null]}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={[
+          styles.input,
+          multiline ? { minHeight: minHeight ?? 160, lineHeight: 23 } : null,
+          focused ? styles.inputFocused : null,
+          error ? styles.inputError : null,
+        ]}
         {...rest}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : hint ? <Text style={styles.hintText}>{hint}</Text> : null}
@@ -103,13 +175,15 @@ export function Field({
   );
 }
 
-export function Notice({ tone, children }: { tone: 'info' | 'warning' | 'danger' | 'success'; children: ReactNode }) {
-  const palette = {
-    info: { background: colors.primarySoft, text: colors.text },
-    warning: { background: colors.warningSoft, text: colors.warning },
-    danger: { background: colors.dangerSoft, text: colors.danger },
-    success: { background: colors.successSoft, text: colors.success },
-  }[tone];
+const NOTICE_PALETTE = {
+  info: { background: colors.primarySoft, text: colors.text },
+  warning: { background: colors.warningSoft, text: colors.warning },
+  danger: { background: colors.dangerSoft, text: colors.danger },
+  success: { background: colors.successSoft, text: colors.success },
+} as const;
+
+export function Notice({ tone, children }: { tone: keyof typeof NOTICE_PALETTE; children: ReactNode }) {
+  const palette = NOTICE_PALETTE[tone];
   return (
     <View accessibilityRole="alert" style={[styles.notice, { backgroundColor: palette.background }]}>
       <Text style={[styles.noticeText, { color: palette.text }]}>{children}</Text>
@@ -117,14 +191,16 @@ export function Notice({ tone, children }: { tone: 'info' | 'warning' | 'danger'
   );
 }
 
-export function Badge({ label, tone }: { label: string; tone: 'neutral' | 'info' | 'warning' | 'danger' | 'success' }) {
-  const palette = {
-    neutral: { background: '#ECECE8', text: colors.muted },
-    info: { background: colors.primarySoft, text: colors.primary },
-    warning: { background: colors.warningSoft, text: colors.warning },
-    danger: { background: colors.dangerSoft, text: colors.danger },
-    success: { background: colors.successSoft, text: colors.success },
-  }[tone];
+const BADGE_PALETTE = {
+  neutral: { background: colors.neutralSoft, text: colors.muted },
+  info: { background: colors.primarySoft, text: colors.primary },
+  warning: { background: colors.warningSoft, text: colors.warning },
+  danger: { background: colors.dangerSoft, text: colors.danger },
+  success: { background: colors.successSoft, text: colors.success },
+} as const;
+
+export function Badge({ label, tone }: { label: string; tone: keyof typeof BADGE_PALETTE }) {
+  const palette = BADGE_PALETTE[tone];
   return (
     <View style={[styles.badge, { backgroundColor: palette.background }]}>
       <Text style={[styles.badgeText, { color: palette.text }]}>{label}</Text>
@@ -183,62 +259,63 @@ export function Segmented<T extends string | number>({
   );
 }
 
-export const styles = StyleSheet.create({
+const styles = StyleSheet.create({
   button: {
-    minHeight: TOUCH_TARGET,
+    minHeight: BUTTON_HEIGHT,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pressed: { opacity: 0.85 },
-  buttonLabel: { fontSize: 16, fontWeight: '600' },
+  buttonLabel: { fontSize: 16, fontWeight: '600', letterSpacing: 0.1 },
+  round: { alignItems: 'center', justifyContent: 'center' },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
     gap: spacing.sm,
+    ...elevation.card,
   },
   field: { gap: spacing.xs },
   fieldLabel: { ...typography.small, fontWeight: '600', color: colors.text },
   input: {
     backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    borderWidth: 1,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     fontSize: 16,
     color: colors.text,
     minHeight: TOUCH_TARGET,
   },
+  inputFocused: { borderColor: colors.primary },
   inputError: { borderColor: colors.danger },
   errorText: { ...typography.small, color: colors.danger },
   hintText: { ...typography.small },
-  notice: { borderRadius: radius.sm, padding: spacing.md },
+  notice: { borderRadius: radius.md, padding: spacing.md },
   noticeText: { fontSize: 15, lineHeight: 21 },
-  badge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: spacing.md, paddingVertical: 4 },
-  badgeText: { fontSize: 13, fontWeight: '600' },
-  progressTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E4E4DF',
-    overflow: 'hidden',
-  },
-  progressFill: { height: 8, backgroundColor: colors.primary },
-  sectionTitle: { ...typography.heading, marginTop: spacing.md },
+  badge: { alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  badgeText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+  progressTrack: { height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
+  progressFill: { height: 6, borderRadius: 3, backgroundColor: colors.primary },
+  sectionTitle: { ...typography.caption, textTransform: 'uppercase', marginTop: spacing.md },
   segmented: {
     flexDirection: 'row',
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    overflow: 'hidden',
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+    padding: spacing.xxs,
+    gap: spacing.xxs,
   },
-  segment: { flex: 1, minHeight: TOUCH_TARGET, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
-  segmentSelected: { backgroundColor: colors.primary },
-  segmentText: { fontSize: 16, fontWeight: '600', color: colors.primary },
-  segmentTextSelected: { color: colors.primaryText },
+  segment: {
+    flex: 1,
+    minHeight: TOUCH_TARGET - 4,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentSelected: { backgroundColor: colors.surface, ...elevation.card },
+  segmentText: { fontSize: 15, fontWeight: '600', color: colors.muted },
+  segmentTextSelected: { color: colors.primary },
 });

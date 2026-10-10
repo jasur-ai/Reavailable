@@ -1,12 +1,15 @@
 /**
- * Reads a UTF-8 transcript from a .txt or .md file chosen by the user.
+ * Lets the user pick a document (.txt, .md, .docx, .pdf) and returns its plain text.
  */
 
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
-
-export const MAX_TRANSCRIPT_FILE_BYTES = 1_000_000;
-const ALLOWED_EXTENSIONS = ['.txt', '.md'];
+import {
+  DocumentTextError,
+  documentKind,
+  extractDocumentText,
+  titleFromFileName,
+} from '../../core/documents/extractText';
 
 export interface PickedTranscript {
   name: string;
@@ -14,7 +17,7 @@ export interface PickedTranscript {
 }
 
 /** Machine codes let the UI render the wording in the interface language. */
-export type TranscriptFileErrorCode = 'file_wrong_type' | 'file_too_large';
+export type TranscriptFileErrorCode = DocumentTextError['code'] | 'cancelled';
 
 export class TranscriptFileError extends Error {
   constructor(readonly code: TranscriptFileErrorCode, message: string) {
@@ -25,7 +28,12 @@ export class TranscriptFileError extends Error {
 
 export async function pickTranscriptFile(): Promise<PickedTranscript | null> {
   const result = await DocumentPicker.getDocumentAsync({
-    type: ['text/plain', 'text/markdown', 'text/*', 'application/octet-stream'],
+    type: [
+      'text/plain',
+      'text/markdown',
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ],
     copyToCacheDirectory: true,
     multiple: false,
   });
@@ -33,15 +41,18 @@ export async function pickTranscriptFile(): Promise<PickedTranscript | null> {
     return null;
   }
   const asset = result.assets[0];
-  const lowerName = asset.name.toLowerCase();
-  if (!ALLOWED_EXTENSIONS.some((extension) => lowerName.endsWith(extension))) {
-    throw new TranscriptFileError('file_wrong_type', 'Choose a .txt or .md file.');
+  const kind = documentKind(asset.name);
+  if (!kind) {
+    throw new TranscriptFileError('unsupported_type', 'Choose a .txt, .md, .docx or .pdf file.');
   }
-  if (asset.size !== undefined && asset.size > MAX_TRANSCRIPT_FILE_BYTES) {
-    throw new TranscriptFileError('file_too_large', 'The file is larger than 1 MB. Split it into several books.');
+  try {
+    const bytes = new Uint8Array(await new File(asset.uri).arrayBuffer());
+    const text = await extractDocumentText(kind, bytes);
+    return { name: titleFromFileName(asset.name), text };
+  } catch (error) {
+    if (error instanceof DocumentTextError) {
+      throw new TranscriptFileError(error.code, error.message);
+    }
+    throw error;
   }
-  const text = await new File(asset.uri).text();
-  // Remove a UTF-8 byte-order mark if present.
-  const withoutBom = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
-  return { name: asset.name.replace(/\.(txt|md)$/i, ''), text: withoutBom };
 }

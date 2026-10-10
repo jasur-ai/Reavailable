@@ -56,7 +56,7 @@ export const STRINGS = {
   'addBook.notice': {
     uz: "O'zbekcha matn joylang (lotin yozuvi yaxshiroq ishlaydi) yoki .txt / .md fayl tanlang. Matn serverga faqat "
       + 'ovoz yaratish uchun yuboriladi. Telefon barcha qismlarni yuklab olib tasdiqlagach, server o\'z nusxasini o\'chiradi.',
-    en: 'Paste Uzbek text (Latin script works best) or load a .txt or .md file. The text is sent to the server only to '
+    en: 'Paste Uzbek text (Latin script works best) or load a .txt, .md, .docx or .pdf file. The text is sent to the server only to '
       + 'create audio. The server deletes its copy as soon as this phone has downloaded and confirmed every part.',
   },
   'addBook.titleLabel': { uz: 'Sarlavha', en: 'Title' },
@@ -70,7 +70,7 @@ export const STRINGS = {
     en: 'This text contains Cyrillic letters. The Uzbek voices are set up for Latin script, so some words may be '
       + 'pronounced incorrectly.',
   },
-  'addBook.loadFile': { uz: '.txt yoki .md fayl yuklash', en: 'Load a .txt or .md file' },
+  'addBook.loadFile': { uz: 'Fayl yuklash (TXT, DOCX, PDF)', en: 'Load a file (TXT, DOCX, PDF)' },
   'addBook.loadFileHint': { uz: 'Fayl tanlash oynasini ochadi', en: 'Opens the file picker' },
   'addBook.fileError': { uz: "Faylni o'qib bo'lmadi.", en: 'The file could not be read.' },
   'addBook.partLengthTitle': { uz: 'Qism uzunligi', en: 'Part length' },
@@ -437,13 +437,21 @@ export const STRINGS = {
     en: 'The server rejected the request. Check the fields.',
   },
   'error.not_found': { uz: 'So\'ralgan narsa topilmadi.', en: 'The requested item was not found.' },
-  'error.file_wrong_type': {
-    uz: 'Faqat .txt yoki .md faylni tanlang.',
-    en: 'Choose a .txt or .md file.',
+  'error.unsupported_type': {
+    uz: 'Faqat .txt, .md, .docx yoki .pdf fayl tanlang. Eski .doc faylni .docx qilib saqlang.',
+    en: 'Choose a .txt, .md, .docx or .pdf file. Save old .doc files as .docx first.',
   },
-  'error.file_too_large': {
-    uz: 'Fayl 1 MB dan katta. Uni bir necha kitobga bo\'ling.',
-    en: 'The file is larger than 1 MB. Split it into several books.',
+  'error.too_large': {
+    uz: 'Fayl 15 MB dan katta. Uni bir necha kitobga bo\'ling.',
+    en: 'The file is larger than 15 MB. Split it into several books.',
+  },
+  'error.no_text': {
+    uz: 'Fayldan matn topilmadi. Skanerlangan sahifalar uchun matnli nusxa kerak.',
+    en: 'No text was found in this file. Scanned pages need a text version.',
+  },
+  'error.unreadable': {
+    uz: 'Faylni o\'qib bo\'lmadi. U buzilgan yoki parol bilan himoyalangan bo\'lishi mumkin.',
+    en: 'The file could not be read. It may be damaged or password-protected.',
   },
   'error.fallback': { uz: 'Nimadir xato ketdi. Qayta urinib ko\'ring.', en: 'Something went wrong. Try again.' },
 } as const;

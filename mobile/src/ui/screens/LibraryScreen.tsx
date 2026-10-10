@@ -3,7 +3,7 @@ import { Alert, FlatList, Image, RefreshControl, StyleSheet, Text, View } from '
 import type { BookRecord } from '../../core/types';
 import { bookStatusView, voiceLabel, type Tone } from '../presentation';
 import { Badge, Button, Card, Notice, ProgressBar } from '../components/common';
-import { colors, spacing, typography } from '../theme';
+import { colors, radius, spacing, typography } from '../theme';
 import { useTranslate } from '../TranslateContext';
 
 const TONE_TO_BADGE: Record<Tone, Tone> = {
@@ -46,13 +46,14 @@ export function LibraryScreen(props: LibraryScreenProps) {
       data={sorted}
       keyExtractor={(book) => book.id}
       contentContainerStyle={styles.content}
+      style={styles.screen}
       refreshControl={<RefreshControl refreshing={props.refreshing} onRefresh={props.onRefresh} />}
       ListHeaderComponent={
         <View style={styles.header}>
           <View style={styles.headerRow}>
             <View style={styles.brand}>
               <Image source={require('../../../assets/brand/logo.png')} style={styles.logo} accessibilityLabel="Reavailable" />
-              <Text style={typography.title}>{t('library.title')}</Text>
+              <Text style={typography.display}>{t('library.title')}</Text>
             </View>
             <Button label={t('library.settings')} variant="ghost" onPress={props.onSettings} />
           </View>
@@ -80,6 +81,7 @@ export function LibraryScreen(props: LibraryScreenProps) {
         />
       )}
       ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+      showsVerticalScrollIndicator={false}
     />
   );
 }
@@ -132,11 +134,12 @@ function BookCard({
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingBottom: spacing.xl },
-  header: { gap: spacing.md, marginBottom: spacing.lg },
+  screen: { backgroundColor: colors.background },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  header: { gap: spacing.md, marginBottom: spacing.xl },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 },
-  logo: { width: 40, height: 40, borderRadius: 10 },
+  logo: { width: 44, height: 44, borderRadius: radius.sm },
   flex: { flex: 1 },
   bookHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   code: { ...typography.small, color: colors.danger },

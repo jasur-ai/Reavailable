@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { describeError } from '../../core/messages';
 import { pickTranscriptFile, TranscriptFileError } from '../../platform/documents/transcriptFile';
-import { Button, Card, Field, Notice, Segmented } from '../components/common';
+import { Button, Card, Field, Notice, SectionTitle, Segmented } from '../components/common';
 import {
   containsCyrillic,
   formatCount,
@@ -73,10 +73,12 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={typography.title}>{t('addBook.title')}</Text>
+      <View style={styles.header}>
+        <Text style={typography.title}>{t('addBook.title')}</Text>
+        <Text style={typography.small}>{t('addBook.notice')}</Text>
+      </View>
 
-      <Notice tone="info">{t('addBook.notice')}</Notice>
-
+      <SectionTitle>1 · {t('addBook.titleLabel')}</SectionTitle>
       <Card>
         <Field
           label={t('addBook.titleLabel')}
@@ -87,6 +89,18 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
           placeholder={t('addBook.titlePlaceholder')}
           autoCapitalize="sentences"
         />
+      </Card>
+
+      <SectionTitle>2 · {t('addBook.textLabel')}</SectionTitle>
+      <Card>
+        <Button
+          label={t('addBook.loadFile')}
+          variant="secondary"
+          onPress={loadFile}
+          busy={loadingFile}
+          accessibilityHint={t('addBook.loadFileHint')}
+        />
+        {fileError ? <Notice tone="danger">{fileError}</Notice> : null}
         <Field
           label={t('addBook.textLabel')}
           value={transcript}
@@ -103,18 +117,10 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
           })}
         />
         {cyrillic ? <Notice tone="warning">{t('addBook.cyrillicWarning')}</Notice> : null}
-        <Button
-          label={t('addBook.loadFile')}
-          variant="secondary"
-          onPress={loadFile}
-          busy={loadingFile}
-          accessibilityHint={t('addBook.loadFileHint')}
-        />
-        {fileError ? <Text style={styles.error}>{fileError}</Text> : null}
       </Card>
 
+      <SectionTitle>3 · {t('addBook.partLengthTitle')}</SectionTitle>
       <Card>
-        <Text style={typography.heading}>{t('addBook.partLengthTitle')}</Text>
         <Text style={typography.small}>{t('addBook.partLengthBody')}</Text>
         <Segmented
           label={t('addBook.sentencesLabel')}
@@ -139,8 +145,8 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xl },
-  error: { ...typography.small, color: colors.danger },
-  actions: { gap: spacing.sm },
-  footnote: { ...typography.small, textAlign: 'center' },
+  content: { padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.xxl, backgroundColor: colors.background, flexGrow: 1 },
+  header: { gap: spacing.xs, marginBottom: spacing.md },
+  actions: { gap: spacing.sm, marginTop: spacing.md },
+  footnote: { ...typography.small, textAlign: 'center', marginTop: spacing.sm },
 });
