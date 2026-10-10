@@ -113,6 +113,10 @@ async function docxText(bytes: Uint8Array): Promise<string> {
 async function pdfText(bytes: Uint8Array): Promise<string> {
   // Loaded lazily so the rest of the app does not pay for the PDF engine at start-up.
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  // Hermes has no dynamic import of a computed worker path, so the worker is handed to pdf.js directly.
+  // pdf.js checks globalThis.pdfjsWorker before it tries to load a worker file.
+  const worker = await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+  (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = worker;
   let document: Awaited<ReturnType<typeof pdfjs.getDocument>['promise']>;
   try {
     document = await pdfjs.getDocument({
