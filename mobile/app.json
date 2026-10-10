@@ -2,7 +2,7 @@
   "expo": {
     "name": "Reavailable",
     "slug": "reavailable",
-    "version": "0.1.0",
+    "version": "0.2.2",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "reavailable",
@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "uz.reavailable.app",
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#1F6F5C",
         "foregroundImage": "./assets/adaptive-icon.png"
