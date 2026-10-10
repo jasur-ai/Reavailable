@@ -70,6 +70,8 @@ export interface AppServices {
   openBook(bookId: string): Promise<void>;
   /** The access key kept in memory for this session (empty when none is set). */
   getServerKey(): string;
+  /** Voice ids the configured server offers, or null when the server cannot be reached or is older. */
+  serverVoices(): Promise<string[] | null>;
   /** Saves the address and the key, then answers with a line to show the user. */
   saveServerSettings(input: ServerSettingsInput): Promise<string>;
   /** Contacts the server and answers with a line to show the user. Rejects with translated wording. */
@@ -176,6 +178,20 @@ export async function createAppServices(): Promise<AppServices> {
 
     getServerKey(): string {
       return serverKey ?? '';
+    },
+
+    async serverVoices(): Promise<string[] | null> {
+      const baseUrl = library.settings().apiBaseUrl;
+      if (!baseUrl) {
+        return null;
+      }
+      try {
+        const client = new ApiClient({ baseUrl, apiKey: serverKey ?? undefined, timeoutMs: REQUEST_TIMEOUT_MS });
+        const config = await client.config();
+        return config.voices.length > 0 ? config.voices : null;
+      } catch {
+        return null;
+      }
     },
 
     async saveServerSettings({ apiBaseUrl, apiKey }: ServerSettingsInput): Promise<string> {

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { splitTranscript } from '../../core/documents/splitText';
 import { describeError } from '../../core/messages';
-import { BOOK_LANGUAGES, VOICE_GENDERS, voiceFor, type BookLanguage, type VoiceGender } from '../../core/voices';
+import { BOOK_LANGUAGES, VOICE_CATALOG, VOICE_GENDERS, voiceFor, type BookLanguage, type VoiceGender } from '../../core/voices';
 import { pickTranscriptFile, TranscriptFileError } from '../../platform/documents/transcriptFile';
 import { Button, Card, Field, Notice, SectionTitle, Segmented } from '../components/common';
 import {
@@ -29,14 +29,36 @@ export interface NewBookInput {
 export interface AddBookScreenProps {
   onSubmit: (input: NewBookInput) => Promise<void>;
   onCancel: () => void;
+  /** Voice ids the server offers. Null while unknown: then every option is shown. */
+  serverVoices: readonly string[] | null;
 }
 
-export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
+/** Languages and genders that have a voice on this server. */
+function availableOptions(serverVoices: readonly string[] | null) {
+  const offered = (language: BookLanguage, gender?: VoiceGender) =>
+    VOICE_CATALOG.some(
+      (voice) =>
+        voice.language === language &&
+        (gender === undefined || voice.gender === gender) &&
+        (serverVoices === null || serverVoices.includes(voice.id)),
+    );
+  return {
+    languages: BOOK_LANGUAGES.filter((language) => offered(language)),
+    genders: (language: BookLanguage) => VOICE_GENDERS.filter((gender) => offered(language, gender)),
+  };
+}
+
+export function AddBookScreen({ onSubmit, onCancel, serverVoices }: AddBookScreenProps) {
   const t = useTranslate();
   const [title, setTitle] = useState('');
   const [transcript, setTranscript] = useState('');
   const [language, setLanguage] = useState<BookLanguage>('uz');
   const [gender, setGender] = useState<VoiceGender>('female');
+  const options = useMemo(() => availableOptions(serverVoices), [serverVoices]);
+  const genderOptions = options.genders(language);
+  // Keep the selection valid when the server offers fewer voices than the app knows about.
+  const effectiveLanguage = options.languages.includes(language) ? language : (options.languages[0] ?? language);
+  const effectiveGender = genderOptions.includes(gender) ? gender : (genderOptions[0] ?? gender);
   const [sentencesPerChunk, setSentencesPerChunk] = useState<1 | 2>(2);
   const [errors, setErrors] = useState<NewBookErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -44,7 +66,7 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
   const [fileError, setFileError] = useState<{ message: string; detail: string | null } | null>(null);
   const [loadingFile, setLoadingFile] = useState(false);
 
-  const cyrillic = language === 'uz' && containsCyrillic(transcript);
+  const cyrillic = effectiveLanguage === 'uz' && containsCyrillic(transcript);
   const parts = useMemo(
     () => (transcript.length > PART_MAX_CHARS ? splitTranscript(transcript, PART_MAX_CHARS).length : 1),
     [transcript],
@@ -85,8 +107,8 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
         title: title.trim(),
         transcript: transcript.trim(),
         sentencesPerChunk,
-        language,
-        voice: voiceFor(language, gender),
+        language: effectiveLanguage,
+        voice: voiceFor(effectiveLanguage, effectiveGender),
       });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : t('addBook.submitError'));
@@ -154,9 +176,9 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
         <Text style={styles.fieldLabel}>{t('addBook.languageLabel')}</Text>
         <Segmented<BookLanguage>
           label={t('addBook.languageLabel')}
-          value={language}
+          value={effectiveLanguage}
           onChange={setLanguage}
-          options={BOOK_LANGUAGES.map((value) => ({
+          options={options.languages.map((value) => ({
             value,
             label: value === 'uz' ? t('addBook.languageUz') : t('addBook.languageEn'),
           }))}
@@ -164,9 +186,9 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
         <Text style={[styles.fieldLabel, styles.gap]}>{t('addBook.voiceLabel')}</Text>
         <Segmented<VoiceGender>
           label={t('addBook.voiceLabel')}
-          value={gender}
+          value={effectiveGender}
           onChange={setGender}
-          options={VOICE_GENDERS.map((value) => ({
+          options={genderOptions.map((value) => ({
             value,
             label: value === 'female' ? t('addBook.voiceFemale') : t('addBook.voiceMale'),
           }))}

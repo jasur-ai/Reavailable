@@ -38,7 +38,26 @@ export function AppRoot() {
 
   const [stack, setStack] = useState<Route[]>([{ name: 'library' }]);
   const [refreshing, setRefreshing] = useState(false);
+  const [serverVoices, setServerVoices] = useState<string[] | null>(null);
   const route = stack[stack.length - 1];
+  const onAddScreen = route.name === 'add';
+  const serverUrl = services.library.settings().apiBaseUrl;
+
+  // The add-book screen offers only the languages and voices this server really has.
+  useEffect(() => {
+    if (!onAddScreen) {
+      return undefined;
+    }
+    let active = true;
+    void services.serverVoices().then((voices) => {
+      if (active) {
+        setServerVoices(voices);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [services, onAddScreen, serverUrl]);
 
   const push = (next: Route) => setStack((current) => [...current, next]);
   const pop = () => setStack((current) => (current.length > 1 ? current.slice(0, -1) : current));
@@ -75,8 +94,6 @@ export function AppRoot() {
       services.openBook(route.bookId).catch(() => undefined);
     }
   }, [route, services]);
-
-  const serverUrl = services.library.settings().apiBaseUrl;
 
   const refresh = () => {
     setRefreshing(true);
@@ -139,7 +156,13 @@ export function AppRoot() {
       );
       break;
     case 'add':
-      screen = <AddBookScreen onSubmit={createBook} onCancel={() => selectTab('library')} />;
+      screen = (
+        <AddBookScreen
+          onSubmit={createBook}
+          onCancel={() => selectTab('library')}
+          serverVoices={serverVoices}
+        />
+      );
       break;
     case 'settings':
       screen = (

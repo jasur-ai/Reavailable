@@ -15,8 +15,11 @@ export type Tone = 'neutral' | 'info' | 'warning' | 'danger' | 'success';
 
 /** Longest text accepted in one go. Longer texts are split into several books of PART_MAX_CHARS. */
 export const MAX_TRANSCRIPT_CHARS = 1_000_000;
-/** Largest text one book may hold. Keeps each book well inside the server's per-book limits. */
-export const PART_MAX_CHARS = 150_000;
+/**
+ * Largest text one book may hold. At worst (short sentences, one per part) 80,000 characters make about
+ * 2,000 parts, which is the per-book limit of the server as it is deployed today.
+ */
+export const PART_MAX_CHARS = 80_000;
 export const MAX_TITLE_CHARS = 120;
 
 export function storedCount(book: BookRecord): number {
