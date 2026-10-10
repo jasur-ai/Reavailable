@@ -13,6 +13,40 @@ function parsedLast(persistence: MemoryPersistence): LibraryData {
   return JSON.parse(persistence.text) as LibraryData;
 }
 
+describe('build-time server address', () => {
+  const original = process.env.EXPO_PUBLIC_DEFAULT_SERVER_URL;
+
+  const loadConfig = async () => {
+    jest.resetModules();
+    return import('../../src/core/config');
+  };
+
+  afterEach(() => {
+    if (original === undefined) {
+      delete process.env.EXPO_PUBLIC_DEFAULT_SERVER_URL;
+    } else {
+      process.env.EXPO_PUBLIC_DEFAULT_SERVER_URL = original;
+    }
+    jest.resetModules();
+  });
+
+  it('uses the build variable, trimmed, when one is set', async () => {
+    process.env.EXPO_PUBLIC_DEFAULT_SERVER_URL = '  https://from-build.workers.dev  ';
+    expect((await loadConfig()).DEFAULT_SERVER_URL).toBe('https://from-build.workers.dev');
+  });
+
+  it('falls back to the address committed by the deploy workflow', async () => {
+    delete process.env.EXPO_PUBLIC_DEFAULT_SERVER_URL;
+    // Empty until a server has been deployed; then the deploy workflow commits the address here.
+    expect((await loadConfig()).DEFAULT_SERVER_URL).toBe('');
+  });
+
+  it('never lets an empty build variable override the committed address', async () => {
+    process.env.EXPO_PUBLIC_DEFAULT_SERVER_URL = '   ';
+    expect((await loadConfig()).DEFAULT_SERVER_URL).toBe('');
+  });
+});
+
 describe('Library: loading', () => {
   it('starts empty when nothing was stored yet', async () => {
     const library = new Library(new MemoryPersistence(), () => FIXED);

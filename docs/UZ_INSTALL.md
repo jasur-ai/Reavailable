@@ -78,6 +78,7 @@ Qiymatni bir joyga yozib qo'ying: **2-qismda uni ilovaning Sozlamalariga kiritas
 | `bucket` | `reavailable-audiobooks` | R2 bucket nomi |
 | `azure_region` | `eastus` | Azure resursingizning hududi |
 | `chunks_per_pass` | `8` | Bepul planda 8 qoldiring. Workers Paid bo'lsa `40` qo'ying |
+| `require_access_key` | `true` | `false` qilsangiz server kalitsiz ochiq bo'ladi (1.4-qismdagi xavfni o'qing) |
 
 4. Ish tugagach (taxminan 3–6 daqiqa), ish natijasi sahifasidagi **Summary** bo'limida server manzili
    ko'rsatiladi:
@@ -86,22 +87,35 @@ Qiymatni bir joyga yozib qo'ying: **2-qismda uni ilovaning Sozlamalariga kiritas
 Server address: https://reavailable-api.<sizning-subdomain>.workers.dev
 ```
 
-**Shu manzilni saqlab qo'ying** — ilovaga kiritiladi.
+**Shu manzilni saqlab qo'ying.** U avtomatik ravishda ilova kodiga yoziladi va yangi APK shu manzil bilan
+quriladi (1.3-qism). Eski APK ishlatsangiz, manzilni qo'lda kiritasiz.
 
 Workflow nima qiladi: R2 bucket va D1 bazani yaratadi (yo'q bo'lsa), migratsiyalarni qo'llaydi, ikkala
 kalitni Worker secret sifatida saqlaydi, deploy qiladi va nihoyat tirik manzilni tekshiradi
 (`/api/v1/health` va `/api/v1/config`: `provider: azure`, `requires_api_key: true`, `api_key_ok: true`).
 Tekshiruv o'tmasa, workflow qizil bo'lib to'xtaydi — demak server ishlamayapti.
 
-### 1.3. (Ixtiyoriy) Manzilni APK'ga "yopishtirib" qo'yish
+### 1.3. Manzil APK'ga o'zi yoziladi
 
-Agar ilova ochilganda server manzilini **o'zi** bilishini istasangiz:
+Qo'shimcha ish qilmaysiz. Deploy workflow server manzilini ilova kodiga
+(`mobile/src/core/config.ts`) yozadi, uni branch'ga commit qiladi va yangi teg
+(`android-v0.2.0-server<run-raqami>`) bosadi. Shu teg orqali **manzili tayyor APK** avtomatik quriladi va
+**Releases** sahifasida pre-release sifatida chiqadi (taxminan 10 daqiqa).
 
-1. GitHub: **Settings → Secrets and variables → Actions → Variables** → **New repository variable**.
-2. Nom: `DEFAULT_SERVER_URL`, qiymat: `https://reavailable-api.<subdomain>.workers.dev`.
-3. Yangi teg (tag) bilan APK qayta qurilsa, ilova manzilni tayyor holda ochadi. Siz faqat kalitni kiritasiz.
+Ya'ni 1.2-qismdan keyin Releases'dagi **eng yangi** pre-release'ni oling: unda server manzili allaqachon
+kiritilgan, siz faqat **kirish kalitini** yozasiz.
 
-Buni qilmasangiz ham bo'ladi: manzilni bir marta qo'lda kiritasiz.
+> Eski APK (`android-v0.2.0-test1`) ham ishlaydi — unda manzilni qo'lda kiritasiz (2.3-qism).
+
+### 1.4. (Ixtiyoriy) Kirish kalitsiz server
+
+`AUDIOBOOK_API_KEY` secret'ini qo'shmoqchi bo'lmasangiz, workflow'ni ishga tushirishda
+**`require_access_key: false`** ni tanlashingiz mumkin. U holda ilovaga hech narsa kiritish kerak emas:
+manzil APK'da tayyor, kirish kaliti so'ralmaydi.
+
+**Lekin bu xavfsiz emas.** Bu repo **ochiq (public)**, shuning uchun server manzili ham ochiq. Manzilni
+bilgan har kim serverda kitob yarata oladi va sizning **Azure bepul kvotangizni** (oyiga ~500 000 belgi)
+sarflab yuboradi. Shu sababli standart qiymat `true`: kalitni bir marta kiritasiz va server yopiq bo'ladi.
 
 ---
 
@@ -109,7 +123,8 @@ Buni qilmasangiz ham bo'ladi: manzilni bir marta qo'lda kiritasiz.
 
 ### 2.1. APK'ni yuklab oling
 
-1. GitHub'da: **Releases** → eng yangi pre-release (masalan `android-v0.2.0-test1`).
+1. GitHub'da: **Releases** → eng yangi pre-release. Server deploy qilingan bo'lsa, eng yangisi
+   `android-v0.2.0-server<N>` bo'ladi va unda manzil tayyor; bo'lmasa `android-v0.2.0-test1` ni oling.
 2. **Assets** ro'yxatidan `app-release.apk` (taxminan 150 MB) va `app-release.apk.sha256` ni yuklang.
 3. Telefonda fayl butunligini tekshirish (ixtiyoriy, lekin foydali):
 
@@ -134,8 +149,8 @@ sha256sum -c app-release.apk.sha256
 Ilovani oching → **Kutubxona** ekranida **"Sozlamalar"** tugmasi:
 
 1. **Interfeys tili** — `O'zbekcha` (standart) yoki `English`. Tanlash darhol amal qiladi.
-2. **Server manzili** — 1.2-qismda olgan manzil, masalan
-   `https://reavailable-api.sizning-subdomain.workers.dev`.
+2. **Server manzili** — yangi APK'da bu maydon **to'ldirilgan** keladi. Eski APK bo'lsa, 1.2-qismdagi
+   manzilni yozing: `https://reavailable-api.<subdomain>.workers.dev`.
    - Manzil `https://` bilan boshlanishi shart (release versiya oddiy `http://` ni qabul qilmaydi).
    - Oxirida `/` belgisi bo'lmasa ham bo'ladi.
 3. **Kirish kaliti** — `AUDIOBOOK_API_KEY` qiymati.

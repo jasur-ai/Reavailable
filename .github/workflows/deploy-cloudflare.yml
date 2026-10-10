@@ -5,10 +5,15 @@ name: Deploy speech server (Cloudflare Workers)
 # then deploys and checks the live HTTPS address.
 #
 # Run it from the Actions tab -> "Deploy speech server (Cloudflare Workers)" -> "Run workflow".
-# It needs three repository secrets (Settings -> Secrets and variables -> Actions):
+# It needs these repository secrets (Settings -> Secrets and variables -> Actions):
 #   CLOUDFLARE_API_TOKEN  an API token with Workers Scripts, D1 and R2 edit rights
 #   AZURE_SPEECH_KEY      Key 1 of your Azure AI Speech resource
-#   AUDIOBOOK_API_KEY     the access key you will type into the app's Settings
+#   AUDIOBOOK_API_KEY     the access key you type into the app's Settings
+#                         (only needed while require_access_key is true)
+#
+# After the server answers correctly the workflow records its address in mobile/src/core/config.ts,
+# commits that to this branch and pushes a tag, so android-release.yml publishes an APK that opens
+# with the server address already filled in. No further action is needed.
 
 on:
   workflow_dispatch:
@@ -28,6 +33,14 @@ on:
       chunks_per_pass:
         description: Parts synthesized per background pass (40 is fine on a Workers Paid plan)
         default: '8'
+      require_access_key:
+        description: >-
+          true (recommended): the app must present AUDIOBOOK_API_KEY to create a book. false: anyone
+          who knows the address can create books and use your Azure free quota; note that this
+          repository is public, so the address is public.
+        type: choice
+        options: ['true', 'false']
+        default: 'true'
 
 permissions:
   contents: read
@@ -41,6 +54,9 @@ jobs:
     name: Provision and deploy
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Needed by the last step, which commits the deployed address and pushes the release tag.
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: worker
@@ -55,9 +71,13 @@ jobs:
       BUCKET: ${{ inputs.bucket || 'reavailable-audiobooks' }}
       AZURE_REGION: ${{ inputs.azure_region || 'eastus' }}
       CHUNKS_PER_PASS: ${{ inputs.chunks_per_pass || '8' }}
+      REQUIRE_KEY: ${{ inputs.require_access_key || 'true' }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, so the last step can commit and push to this branch.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -71,16 +91,22 @@ jobs:
           missing=""
           [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || missing="$missing CLOUDFLARE_API_TOKEN"
           [ -n "${AZURE_SPEECH_KEY:-}" ] || missing="$missing AZURE_SPEECH_KEY"
-          [ -n "${AUDIOBOOK_API_KEY:-}" ] || missing="$missing AUDIOBOOK_API_KEY"
+          if [ "$REQUIRE_KEY" = "true" ]; then
+            [ -n "${AUDIOBOOK_API_KEY:-}" ] || missing="$missing AUDIOBOOK_API_KEY"
+          fi
           if [ -n "$missing" ]; then
             echo "::error::Missing repository secrets:$missing"
             echo "Add them in the repository under Settings -> Secrets and variables -> Actions." >&2
             echo "  CLOUDFLARE_API_TOKEN  https://dash.cloudflare.com/profile/api-tokens" >&2
             echo "  AZURE_SPEECH_KEY      Azure portal -> your Speech resource -> Keys and Endpoint -> KEY 1" >&2
             echo "  AUDIOBOOK_API_KEY     any long random string you choose; you type the same value into the app" >&2
+            echo "                        (only needed while require_access_key is true)" >&2
             exit 1
           fi
-          echo "All three secrets are present."
+          echo "Required secrets are present (require_access_key=$REQUIRE_KEY)."
+          if [ "$REQUIRE_KEY" != "true" ]; then
+            echo "::warning::Deploying without an access key: anyone who knows the address can create books and use the Azure free quota."
+          fi
 
       - name: Install
         run: npm ci --no-audit --no-fund
@@ -143,7 +169,12 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s' "$AZURE_SPEECH_KEY" | npx wrangler secret put AZURE_SPEECH_KEY
-          printf '%s' "$AUDIOBOOK_API_KEY" | npx wrangler secret put API_KEY
+          if [ "$REQUIRE_KEY" = "true" ]; then
+            printf '%s' "$AUDIOBOOK_API_KEY" | npx wrangler secret put API_KEY
+          else
+            # Remove a key left over from an earlier deploy, or the server would still ask for one.
+            npx wrangler secret delete API_KEY || echo "No API_KEY secret to delete."
+          fi
 
       - name: Deploy again with the secrets in place
         id: final
@@ -180,8 +211,47 @@ jobs:
           echo "GET $url/api/v1/config (with the app access key)"
           config=$(curl -fsS -H "X-API-Key: $AUDIOBOOK_API_KEY" "$url/api/v1/config")
           echo "$config"
-          echo "$config" | jq -e '.status == "ok" and .api_key_ok == true and .requires_api_key == true and .provider == "azure"' \
-            > /dev/null || { echo "::error::The deployed server did not report a healthy Azure configuration."; exit 1; }
+          if [ "$REQUIRE_KEY" = "true" ]; then
+            expected='.status == "ok" and .provider == "azure" and .requires_api_key == true and .api_key_ok == true'
+          else
+            expected='.status == "ok" and .provider == "azure" and .requires_api_key == false'
+          fi
+          echo "$config" | jq -e "$expected" > /dev/null \
+            || { echo "::error::The deployed server did not report the expected configuration ($expected)."; exit 1; }
+
+      - name: Record the address in the app and publish a ready-to-use APK
+        working-directory: .
+        run: |
+          set -euo pipefail
+          url="${{ steps.final.outputs.url }}"
+          branch="${GITHUB_REF#refs/heads/}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          sed -i "s|^const BAKED_SERVER_URL = .*|const BAKED_SERVER_URL = '$url';|" mobile/src/core/config.ts
+          grep -n "BAKED_SERVER_URL" mobile/src/core/config.ts
+
+          if git diff --quiet -- mobile/src/core/config.ts; then
+            echo "The app already points at $url; nothing to publish."
+            echo "published=no" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          git add mobile/src/core/config.ts
+          # [no apk] stops android-apk.yml from building the same commit twice; the tag below builds
+          # and publishes it through android-release.yml.
+          git commit -m "Record the deployed server address in the app [no apk]"
+          tag="android-v0.2.0-server$GITHUB_RUN_NUMBER"
+          git tag -a "$tag" -m "Android build with the deployed server address ($url)"
+
+          # Publishing must never mask a successful deployment, so a push problem is a warning.
+          if git push origin "HEAD:$branch" && git push origin "$tag"; then
+            echo "published=$tag" >> "$GITHUB_ENV"
+            echo "Pushed $tag: android-release.yml now builds an APK that opens with the address filled in."
+          else
+            echo "::warning::The server is live at $url, but the address could not be pushed. Enter it in the app under Settings -> Server address."
+            echo "published=no" >> "$GITHUB_ENV"
+          fi
 
       - name: Write the result to the job summary
         run: |
@@ -190,8 +260,23 @@ jobs:
             echo
             echo "**Server address:** \`${{ steps.final.outputs.url }}\`"
             echo
-            echo "Type that address into the app under **Settings -> Server address**, and the value of"
-            echo "\`AUDIOBOOK_API_KEY\` into **Access key**."
+            if [ "${published:-no}" = "no" ]; then
+              echo "The app already knew this address. Enter it under **Settings -> Server address** if"
+              echo "you are using an older build."
+            else
+              echo "**Ready-to-use APK:** release \`${published}\` is being built now with this address"
+              echo "already filled in. Install it from the"
+              echo "[releases page](https://github.com/$GITHUB_REPOSITORY/releases) when the build ends."
+            fi
+            echo
+            if [ "$REQUIRE_KEY" = "true" ]; then
+              echo "In the app, enter the value of the \`AUDIOBOOK_API_KEY\` secret under **Access key**."
+              echo "That key is never written to this summary or to any log."
+            else
+              echo "**Warning:** this server has **no access key**, so anyone who knows the address can"
+              echo "create books and use your Azure free quota. Re-run with \`require_access_key: true\`"
+              echo "to close it."
+            fi
             echo
             echo "| Check | Result |"
             echo "| --- | --- |"
@@ -199,4 +284,5 @@ jobs:
             echo "| D1 database | $DATABASE (\`${{ steps.d1.outputs.id }}\`) |"
             echo "| R2 bucket | $BUCKET |"
             echo "| Parts per background pass | $CHUNKS_PER_PASS |"
+            echo "| Access key required | $REQUIRE_KEY |"
           } >> "$GITHUB_STEP_SUMMARY"

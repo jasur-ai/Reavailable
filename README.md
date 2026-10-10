@@ -49,11 +49,14 @@ job state in D1 and audio in R2, and deletes each part as soon as the phone conf
 1. Add three repository secrets (Settings → Secrets and variables → Actions): `CLOUDFLARE_API_TOKEN`,
    `AZURE_SPEECH_KEY`, `AUDIOBOOK_API_KEY`.
 2. Run the workflow **Deploy speech server (Cloudflare Workers)** (Actions tab → Run workflow).
-3. Copy the address from the job summary into the app under **Settings → Server address**, and the value of
-   `AUDIOBOOK_API_KEY` into **Access key**.
+3. Install the APK the workflow publishes for you: it writes the address into the app, commits it and
+   pushes a release tag, so the newest pre-release opens with the server already filled in. You only enter
+   the value of `AUDIOBOOK_API_KEY` under **Access key**. Older builds need the address typed in by hand.
 
-The workflow provisions the database and the bucket, deploys, and verifies the live endpoint before it
-reports success. Details, all settings and tuning notes: [worker/README.md](worker/README.md).
+The workflow provisions the database and the bucket, deploys, verifies the live endpoint, and only then
+publishes. Its input `require_access_key: false` deploys without an operator key, which is not
+recommended: this repository is public, so the address is public and anyone could create books and spend
+your Azure free quota. Details, all settings and tuning notes: [worker/README.md](worker/README.md).
 
 ### Option B: your own container
 

@@ -184,8 +184,18 @@ The workflow ([`.github/workflows/deploy-cloudflare.yml`](../.github/workflows/d
 creates the R2 bucket and the D1 database if they are missing, writes the database id into
 `wrangler.toml`, applies the migrations remotely, deploys, stores both secrets, deploys again, and then
 checks the live address: `/api/v1/health` must answer `ok` and `/api/v1/config` must report
-`provider: azure`, `requires_api_key: true` and `api_key_ok: true`. The address is printed in the job
-summary; enter it in the app under **Settings → Server address**.
+`provider: azure`, `requires_api_key: true` and `api_key_ok: true`.
+
+Only after those checks does it publish. The address is written into `mobile/src/core/config.ts`
+(`BAKED_SERVER_URL`), committed to the branch with `[no apk]` in the message, and tagged
+`android-v0.2.0-server<run number>`; the tag makes `android-release.yml` build and publish an APK that
+opens with the server already filled in, and `[no apk]` keeps `android-apk.yml` from building the same
+commit twice. The address is also printed in the job summary. Neither the Azure key nor the access key is
+ever written to a log or to the summary.
+
+The input `require_access_key: false` deploys without an operator key and deletes an `API_KEY` secret left
+over from an earlier deploy; the verification then expects `requires_api_key: false`. Use it only if you
+accept that anyone who knows the address can create books and spend the Azure free quota.
 
 The account id is in `wrangler.toml` (`ebcc9b4f989feea5bbdee1181f20b61c`). Change it there if you deploy to
 a different Cloudflare account.

@@ -11,7 +11,7 @@ what has not. Read the "Not verified" section before relying on the product for 
 | Backend lint and types | `.venv/bin/ruff check app tests && .venv/bin/ruff format --check app tests && .venv/bin/mypy` | Style, formatting, strict typing of `app` | clean |
 | Mobile type check | `cd mobile && npx tsc --noEmit` | Strict TypeScript for `src`, `tests`, `App.tsx`, `index.ts` | exit 0 |
 | Mobile lint | `npx eslint .` | Expo rules, `no-console` for app code | clean, no warnings |
-| Mobile unit tests | `npm test` | Core logic: API client, library, sync engine, playback, voice, string catalogue, presentation | 8 suites, 220 tests; coverage thresholds 85% met (96% statements) |
+| Mobile unit tests | `npm test` | Core logic: API client, library, sync engine, playback, voice, string catalogue, presentation, build-time server address | 8 suites, 223 tests; coverage thresholds 85% met (96% statements) |
 | Mobile end-to-end (Python backend) | `E2E_API_BASE_URL=http://127.0.0.1:8000 npm run test:e2e` (backend running) | Real HTTP against the backend with the fake speech provider | 5 passed |
 | Worker tests | `cd worker && npm test` | Chunking (golden fixture), service state machine, D1 store, R2 audio, HTTP contract, TTS mapping, config, security. Runs inside workerd against a real local D1 and R2 | 6 suites, 117 passed |
 | Worker type check | `cd worker && npm run typecheck` | Strict TypeScript for `src` and `tests` | exit 0 |

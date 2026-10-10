@@ -23,4 +23,8 @@ concurrency:
 
 jobs:
   build:
+    # The deploy workflow commits the server address with "[no apk]" and then pushes a release tag,
+    # which builds the same commit through android-release.yml. Building it here too would be a
+    # second 10-minute APK build of identical code.
+    if: ${{ !contains(github.event.head_commit.message, '[no apk]') }}
     uses: ./.github/workflows/android-build.yml
