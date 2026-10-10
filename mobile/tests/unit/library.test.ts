@@ -37,13 +37,13 @@ describe('build-time server address', () => {
 
   it('falls back to the address committed by the deploy workflow', async () => {
     delete process.env.EXPO_PUBLIC_DEFAULT_SERVER_URL;
-    // Empty until a server has been deployed; then the deploy workflow commits the address here.
-    expect((await loadConfig()).DEFAULT_SERVER_URL).toBe('');
+    // The deploy workflow commits the deployed server address here; the app starts with it filled in.
+    expect((await loadConfig()).DEFAULT_SERVER_URL).toBe('https://reavailable-api.jasur-ai.workers.dev');
   });
 
   it('never lets an empty build variable override the committed address', async () => {
     process.env.EXPO_PUBLIC_DEFAULT_SERVER_URL = '   ';
-    expect((await loadConfig()).DEFAULT_SERVER_URL).toBe('');
+    expect((await loadConfig()).DEFAULT_SERVER_URL).toBe('https://reavailable-api.jasur-ai.workers.dev');
   });
 });
 
@@ -52,7 +52,7 @@ describe('Library: loading', () => {
     const library = new Library(new MemoryPersistence(), () => FIXED);
     await library.load();
     expect(library.books()).toEqual([]);
-    expect(library.settings()).toEqual({ apiBaseUrl: null, language: 'uz' });
+    expect(library.settings()).toEqual({ apiBaseUrl: 'https://reavailable-api.jasur-ai.workers.dev', language: 'uz' });
   });
 
   it('restores books and settings from storage', async () => {
@@ -88,7 +88,7 @@ describe('Library: loading', () => {
       ],
     });
     expect(normalized.books.map((book) => book.id)).toEqual(['ok']);
-    expect(normalized.settings.apiBaseUrl).toBeNull();
+    expect(normalized.settings.apiBaseUrl).toBe('https://reavailable-api.jasur-ai.workers.dev');
     expect(normalized.settings.language).toBe('uz');
   });
 
