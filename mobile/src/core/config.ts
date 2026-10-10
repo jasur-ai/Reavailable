@@ -12,6 +12,6 @@
  */
 
 // Filled in by .github/workflows/deploy-cloudflare.yml. Do not put a secret here.
-const BAKED_SERVER_URL = '';
+const BAKED_SERVER_URL = 'https://reavailable-api.jasur-ai.workers.dev';
 
 export const DEFAULT_SERVER_URL: string = process.env.EXPO_PUBLIC_DEFAULT_SERVER_URL?.trim() || BAKED_SERVER_URL;

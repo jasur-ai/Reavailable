@@ -118,16 +118,6 @@ jobs:
           npm run typecheck
           npm test
 
-      - name: Create the R2 bucket if it is missing
-        run: |
-          set +e
-          npx wrangler r2 bucket create "$BUCKET"
-          code=$?
-          set -e
-          if [ "$code" -ne 0 ]; then
-            echo "Bucket '$BUCKET' already exists or could not be created; continuing."
-          fi
-
       - name: Create or find the D1 database
         id: d1
         run: |
@@ -152,9 +142,8 @@ jobs:
           set -euo pipefail
           sed -i "s|^database_id = .*|database_id = \"${{ steps.d1.outputs.id }}\"|" wrangler.toml
           sed -i "s|^database_name = .*|database_name = \"$DATABASE\"|" wrangler.toml
-          sed -i "s|^bucket_name = .*|bucket_name = \"$BUCKET\"|" wrangler.toml
           sed -i "s|^name = \"reavailable-api\"|name = \"$WORKER_NAME\"|" wrangler.toml
-          grep -E '^(name|database_name|database_id|bucket_name)' wrangler.toml
+          grep -E '^(name|database_name|database_id)' wrangler.toml
 
       - name: Apply migrations to the remote database
         run: npx wrangler d1 migrations apply "$DATABASE" --remote
@@ -289,7 +278,7 @@ jobs:
             echo "| --- | --- |"
             echo "| Region | $AZURE_REGION |"
             echo "| D1 database | $DATABASE (\`${{ steps.d1.outputs.id }}\`) |"
-            echo "| R2 bucket | $BUCKET |"
+            echo "| Audio storage | Workers KV (binding AUDIO) |"
             echo "| Parts per background pass | $CHUNKS_PER_PASS |"
             echo "| Access key required | $REQUIRE_KEY |"
           } >> "$GITHUB_STEP_SUMMARY"
