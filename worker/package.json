@@ -1,0 +1,25 @@
+{
+  "name": "reavailable-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker backend for the Reavailable offline audiobook reader.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create reavailable-audiobooks",
+    "db:migrate:local": "wrangler d1 migrations apply reavailable-audiobooks --local",
+    "db:migrate:remote": "wrangler d1 migrations apply reavailable-audiobooks --remote",
+    "bucket:create": "wrangler r2 bucket create reavailable-audiobooks"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.0",
+    "@cloudflare/workers-types": "^5.20261010.1",
+    "typescript": "~5.9.2",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.149.0"
+  }
+}

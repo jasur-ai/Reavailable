@@ -1,0 +1,345 @@
+{
+  "cases": [
+    {
+      "chunks": [
+        "Salom. Bu test.",
+        "Ikkinchi gap!"
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Salom.",
+        "Bu test.",
+        "Ikkinchi gap!"
+      ],
+      "sentences_per_chunk": 2,
+      "text": "Salom. Bu test. Ikkinchi gap!"
+    },
+    {
+      "chunks": [
+        "Salom.",
+        "Bu test.",
+        "Ikkinchi gap!"
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Salom.",
+        "Bu test.",
+        "Ikkinchi gap!"
+      ],
+      "sentences_per_chunk": 1,
+      "text": "Salom. Bu test. Ikkinchi gap!"
+    },
+    {
+      "chunks": [],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [],
+      "sentences_per_chunk": 2,
+      "text": ""
+    },
+    {
+      "chunks": [],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [],
+      "sentences_per_chunk": 2,
+      "text": "   \n\n  "
+    },
+    {
+      "chunks": [
+        "Dr. Karimov bugun keldi. U kitobni o'qidi va juda qiziqarli deb topdi!",
+        "Ikkinchi bob shu yerda boshlanadi. Quyosh nuri derazadan tushib turardi."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Dr. Karimov bugun keldi.",
+        "U kitobni o'qidi va juda qiziqarli deb topdi!",
+        "Ikkinchi bob shu yerda boshlanadi.",
+        "Quyosh nuri derazadan tushib turardi."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "Dr. Karimov bugun keldi. U kitobni o'qidi va juda qiziqarli deb topdi!\n\nIkkinchi bob shu yerda boshlanadi. Quyosh nuri derazadan tushib turardi."
+    },
+    {
+      "chunks": [
+        "A. Navoiy buyuk shoir edi. Uning asarlari bugungacha o'qiladi.",
+        "Prof. Yusupov ma'ruza qildi. Talabalar diqqat bilan tingladi."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "A. Navoiy buyuk shoir edi.",
+        "Uning asarlari bugungacha o'qiladi.",
+        "Prof. Yusupov ma'ruza qildi.",
+        "Talabalar diqqat bilan tingladi."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "A. Navoiy buyuk shoir edi. Uning asarlari bugungacha o'qiladi. Prof. Yusupov ma'ruza qildi. Talabalar diqqat bilan tingladi."
+    },
+    {
+      "chunks": [
+        "Narx 3.5 so'mga oshdi.",
+        "Keyin 4.25 bo'ldi. 3. yil oxirida hammasi o'zgardi."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Narx 3.5 so'mga oshdi.",
+        "Keyin 4.25 bo'ldi. 3. yil oxirida hammasi o'zgardi."
+      ],
+      "sentences_per_chunk": 1,
+      "text": "Narx 3.5 so'mga oshdi. Keyin 4.25 bo'ldi. 3. yil oxirida hammasi o'zgardi."
+    },
+    {
+      "chunks": [
+        "U \"kelaman\" dedi va chiqib ketdi. (Bu juda g'alati edi.)",
+        "Keyin hech narsa bo'lmadi..."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "U \"kelaman\" dedi va chiqib ketdi.",
+        "(Bu juda g'alati edi.)",
+        "Keyin hech narsa bo'lmadi..."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "U \"kelaman\" dedi va chiqib ketdi. (Bu juda g'alati edi.) Keyin hech narsa bo'lmadi..."
+    },
+    {
+      "chunks": [
+        "Manzil: https://example.com/a.b/c?q=1.2 sahifasida yozilgan. Ko'proq ma'lumot uchun murojaat qiling."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Manzil: https://example.com/a.b/c?q=1.2 sahifasida yozilgan.",
+        "Ko'proq ma'lumot uchun murojaat qiling."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "Manzil: https://example.com/a.b/c?q=1.2 sahifasida yozilgan. Ko'proq ma'lumot uchun murojaat qiling."
+    },
+    {
+      "chunks": [
+        "Биринчи жумла. Иккинчи жумла келди.",
+        "Учинчи жумла шу ерда."
+      ],
+      "has_cyrillic": true,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Биринчи жумла.",
+        "Иккинчи жумла келди.",
+        "Учинчи жумла шу ерда."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "Биринчи жумла. Иккинчи жумла келди.\n\nУчинчи жумла шу ерда."
+    },
+    {
+      "chunks": [
+        "Bu juda uzun gap bo'lib, so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z",
+        "so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z",
+        "so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z",
+        "so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z",
+        "so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z",
+        "so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z",
+        "so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z",
+        "so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z",
+        "so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z",
+        "so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z",
+        "so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z va nihoyat tugadi."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 120,
+      "sentences": [
+        "Bu juda uzun gap bo'lib, so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z va nihoyat tugadi."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "Bu juda uzun gap bo'lib, so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z so'z va nihoyat tugadi."
+    },
+    {
+      "chunks": [
+        "Bitta gap"
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Bitta gap"
+      ],
+      "sentences_per_chunk": 2,
+      "text": "Bitta gap"
+    },
+    {
+      "chunks": [
+        "Bitta gap."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Bitta gap."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "Bitta gap."
+    },
+    {
+      "chunks": [
+        "Bir ikki uch"
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Bir ikki uch"
+      ],
+      "sentences_per_chunk": 2,
+      "text": "Bir\nikki\nuch"
+    },
+    {
+      "chunks": [
+        "Bir ikki"
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Bir",
+        "ikki"
+      ],
+      "sentences_per_chunk": 2,
+      "text": "Bir\n\nikki"
+    },
+    {
+      "chunks": [
+        "Ko'p bo'shliq bilan. Keyingi gap."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Ko'p bo'shliq bilan.",
+        "Keyingi gap."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "  Ko'p   bo'shliq   bilan.   Keyingi   gap.  "
+    },
+    {
+      "chunks": [
+        "Raqam 7.",
+        "Keyingi gap boshlandi."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Raqam 7.",
+        "Keyingi gap boshlandi."
+      ],
+      "sentences_per_chunk": 1,
+      "text": "Raqam 7. Keyingi gap boshlandi."
+    },
+    {
+      "chunks": [
+        "etc. va boshqalar ishlatiladi. Bu ham muhim."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "etc. va boshqalar ishlatiladi.",
+        "Bu ham muhim."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "etc. va boshqalar ishlatiladi. Bu ham muhim."
+    },
+    {
+      "chunks": [
+        "mln. so'm berildi. Keyin yana so'raldi."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "mln. so'm berildi.",
+        "Keyin yana so'raldi."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "mln. so'm berildi. Keyin yana so'raldi."
+    },
+    {
+      "chunks": [
+        "Uchta nuqta... va davom. Yana bir gap!"
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "Uchta nuqta... va davom.",
+        "Yana bir gap!"
+      ],
+      "sentences_per_chunk": 2,
+      "text": "Uchta nuqta... va davom. Yana bir gap!"
+    },
+    {
+      "chunks": [
+        "So'roq?",
+        "Javob.",
+        "Undov!"
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "So'roq?",
+        "Javob.",
+        "Undov!"
+      ],
+      "sentences_per_chunk": 1,
+      "text": "So'roq? Javob. Undov!"
+    },
+    {
+      "chunks": [
+        "a. b. c. harflari ketma-ket."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "a. b. c. harflari ketma-ket."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "a. b. c. harflari ketma-ket."
+    },
+    {
+      "chunks": [
+        "‘Iqtibos’ ichida gap bor. “Yana biri” ham bor."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "‘Iqtibos’ ichida gap bor.",
+        "“Yana biri” ham bor."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "‘Iqtibos’ ichida gap bor. “Yana biri” ham bor."
+    },
+    {
+      "chunks": [
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ],
+      "sentences_per_chunk": 1,
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "chunks": [
+        "so'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'z",
+        "so'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'z. Tugadi."
+      ],
+      "has_cyrillic": false,
+      "max_chunk_chars": 600,
+      "sentences": [
+        "so'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'z. Tugadi."
+      ],
+      "sentences_per_chunk": 2,
+      "text": "so'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'zso'z. Tugadi."
+    }
+  ],
+  "generated_by": "backend/scripts/dump_chunking_golden.py"
+}

@@ -63,6 +63,52 @@ jobs:
       - name: Type check, lint and unit tests
         run: npm run check
 
+  worker:
+    name: Cloudflare Worker (types, tests, bundle, fixture)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Install
+        working-directory: worker
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check
+        working-directory: worker
+        run: npm run typecheck
+
+      - name: Tests (workerd, local D1 and R2)
+        working-directory: worker
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: npm test
+
+      - name: Bundle check
+        working-directory: worker
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: npx wrangler deploy --dry-run --outdir "$RUNNER_TEMP/worker-bundle"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Chunking port matches the Python reference
+        run: |
+          set -euo pipefail
+          python3 backend/scripts/dump_chunking_golden.py > "$RUNNER_TEMP/chunking-golden.json"
+          if ! diff -u worker/tests/fixtures/chunking-golden.json "$RUNNER_TEMP/chunking-golden.json"; then
+            echo "The committed fixture drifted from backend/app/chunking.py." >&2
+            echo "Regenerate it: python3 backend/scripts/dump_chunking_golden.py > worker/tests/fixtures/chunking-golden.json" >&2
+            exit 1
+          fi
+
   end-to-end:
     name: End-to-end (live backend, fake speech)
     needs: [backend, mobile]
@@ -199,3 +245,63 @@ jobs:
       - name: Remove the container
         if: always()
         run: docker rm --force api || true
+
+  worker-end-to-end:
+    name: End-to-end (Cloudflare Worker, fake speech)
+    needs: [worker, mobile]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            worker/package-lock.json
+            mobile/package-lock.json
+
+      - name: Install the Worker
+        working-directory: worker
+        run: npm ci --no-audit --no-fund
+
+      - name: Start the Worker with the offline speech provider
+        working-directory: worker
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          set -euo pipefail
+          npx wrangler d1 migrations apply reavailable-audiobooks --local
+          nohup npx wrangler dev --port 8787 --ip 127.0.0.1 \
+            --var TTS_PROVIDER:fake \
+            --var ALLOW_FAKE_PROVIDER:true \
+            --var ALLOWED_VOICES:fake-uz \
+            --var DEFAULT_VOICE:fake-uz \
+            --var CHUNKS_PER_PASS:50 \
+            --var VERSION:ci \
+            > "$RUNNER_TEMP/worker.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8787/api/v1/health; then
+              echo
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "The Worker did not become healthy:" >&2
+          cat "$RUNNER_TEMP/worker.log" >&2
+          exit 1
+
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+
+      - name: Run the mobile end-to-end suite against the Worker
+        working-directory: mobile
+        env:
+          E2E_API_BASE_URL: http://127.0.0.1:8787
+        run: npm run test:e2e
+
+      - name: Show the Worker log on failure
+        if: failure()
+        run: cat "$RUNNER_TEMP/worker.log" || true

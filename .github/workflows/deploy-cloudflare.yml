@@ -1,0 +1,202 @@
+name: Deploy speech server (Cloudflare Workers)
+
+# Deploys the Worker in `worker/` to Cloudflare: creates the D1 database and R2 bucket if they are
+# missing, applies migrations, stores the Azure Speech key and the app access key as Worker secrets,
+# then deploys and checks the live HTTPS address.
+#
+# Run it from the Actions tab -> "Deploy speech server (Cloudflare Workers)" -> "Run workflow".
+# It needs three repository secrets (Settings -> Secrets and variables -> Actions):
+#   CLOUDFLARE_API_TOKEN  an API token with Workers Scripts, D1 and R2 edit rights
+#   AZURE_SPEECH_KEY      Key 1 of your Azure AI Speech resource
+#   AUDIOBOOK_API_KEY     the access key you will type into the app's Settings
+
+on:
+  workflow_dispatch:
+    inputs:
+      worker_name:
+        description: Worker name (becomes part of the workers.dev address)
+        default: reavailable-api
+      database:
+        description: D1 database name
+        default: reavailable-audiobooks
+      bucket:
+        description: R2 bucket name
+        default: reavailable-audiobooks
+      azure_region:
+        description: Region of the Azure Speech resource, for example eastus
+        default: eastus
+      chunks_per_pass:
+        description: Parts synthesized per background pass (40 is fine on a Workers Paid plan)
+        default: '8'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Provision and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: worker
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ebcc9b4f989feea5bbdee1181f20b61c
+      AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+      AUDIOBOOK_API_KEY: ${{ secrets.AUDIOBOOK_API_KEY }}
+      WRANGLER_SEND_METRICS: 'false'
+      WORKER_NAME: ${{ inputs.worker_name || 'reavailable-api' }}
+      DATABASE: ${{ inputs.database || 'reavailable-audiobooks' }}
+      BUCKET: ${{ inputs.bucket || 'reavailable-audiobooks' }}
+      AZURE_REGION: ${{ inputs.azure_region || 'eastus' }}
+      CHUNKS_PER_PASS: ${{ inputs.chunks_per_pass || '8' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Check the required secrets
+        run: |
+          set -euo pipefail
+          missing=""
+          [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "${AZURE_SPEECH_KEY:-}" ] || missing="$missing AZURE_SPEECH_KEY"
+          [ -n "${AUDIOBOOK_API_KEY:-}" ] || missing="$missing AUDIOBOOK_API_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            echo "Add them in the repository under Settings -> Secrets and variables -> Actions." >&2
+            echo "  CLOUDFLARE_API_TOKEN  https://dash.cloudflare.com/profile/api-tokens" >&2
+            echo "  AZURE_SPEECH_KEY      Azure portal -> your Speech resource -> Keys and Endpoint -> KEY 1" >&2
+            echo "  AUDIOBOOK_API_KEY     any long random string you choose; you type the same value into the app" >&2
+            exit 1
+          fi
+          echo "All three secrets are present."
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check and tests before touching the account
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Create the R2 bucket if it is missing
+        run: |
+          set +e
+          npx wrangler r2 bucket create "$BUCKET"
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "Bucket '$BUCKET' already exists or could not be created; continuing."
+          fi
+
+      - name: Create or find the D1 database
+        id: d1
+        run: |
+          set -euo pipefail
+          existing=$(npx wrangler d1 list --json 2>/dev/null \
+            | jq -r --arg name "$DATABASE" '.[]? | select(.name == $name) | .uuid' | head -n 1)
+          if [ -z "$existing" ]; then
+            echo "Creating D1 database '$DATABASE'."
+            existing=$(npx wrangler d1 create "$DATABASE" --json \
+              | jq -r '.results[0].uuid // .uuid // empty')
+          else
+            echo "Using existing D1 database '$DATABASE'."
+          fi
+          if [ -z "$existing" ]; then
+            echo "::error::Could not determine the D1 database id."
+            exit 1
+          fi
+          echo "id=$existing" >> "$GITHUB_OUTPUT"
+
+      - name: Point the configuration at that database and worker name
+        run: |
+          set -euo pipefail
+          sed -i "s|^database_id = .*|database_id = \"${{ steps.d1.outputs.id }}\"|" wrangler.toml
+          sed -i "s|^database_name = .*|database_name = \"$DATABASE\"|" wrangler.toml
+          sed -i "s|^bucket_name = .*|bucket_name = \"$BUCKET\"|" wrangler.toml
+          sed -i "s|^name = \"reavailable-api\"|name = \"$WORKER_NAME\"|" wrangler.toml
+          grep -E '^(name|database_name|database_id|bucket_name)' wrangler.toml
+
+      - name: Apply migrations to the remote database
+        run: npx wrangler d1 migrations apply "$DATABASE" --remote
+
+      - name: Deploy
+        run: |
+          set -euo pipefail
+          npx wrangler deploy \
+            --var AZURE_SPEECH_REGION:"$AZURE_REGION" \
+            --var CHUNKS_PER_PASS:"$CHUNKS_PER_PASS" \
+            2>&1 | tee "$RUNNER_TEMP/deploy.log"
+
+      - name: Store the Azure Speech key and the app access key
+        run: |
+          set -euo pipefail
+          printf '%s' "$AZURE_SPEECH_KEY" | npx wrangler secret put AZURE_SPEECH_KEY
+          printf '%s' "$AUDIOBOOK_API_KEY" | npx wrangler secret put API_KEY
+
+      - name: Deploy again with the secrets in place
+        id: final
+        run: |
+          set -euo pipefail
+          npx wrangler deploy \
+            --var AZURE_SPEECH_REGION:"$AZURE_REGION" \
+            --var CHUNKS_PER_PASS:"$CHUNKS_PER_PASS" \
+            2>&1 | tee "$RUNNER_TEMP/deploy2.log"
+          url=$(grep -oE 'https://[A-Za-z0-9._-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" "$RUNNER_TEMP/deploy2.log" \
+            | grep -oE 'https://[A-Za-z0-9._-]+\.workers\.dev' | head -n 1 || true)
+          if [ -z "$url" ]; then
+            subdomain=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+              | jq -r '.result.subdomain // empty')
+            if [ -n "$subdomain" ]; then
+              url="https://${WORKER_NAME}.${subdomain}.workers.dev"
+            fi
+          fi
+          if [ -z "$url" ]; then
+            echo "::error::Deployed, but the workers.dev address could not be determined."
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Server address: $url"
+
+      - name: Check the deployed server
+        run: |
+          set -euo pipefail
+          url="${{ steps.final.outputs.url }}"
+          echo "GET $url/api/v1/health"
+          curl -fsS "$url/api/v1/health"
+          echo
+          echo "GET $url/api/v1/config (with the app access key)"
+          config=$(curl -fsS -H "X-API-Key: $AUDIOBOOK_API_KEY" "$url/api/v1/config")
+          echo "$config"
+          echo "$config" | jq -e '.status == "ok" and .api_key_ok == true and .requires_api_key == true and .provider == "azure"' \
+            > /dev/null || { echo "::error::The deployed server did not report a healthy Azure configuration."; exit 1; }
+
+      - name: Write the result to the job summary
+        run: |
+          {
+            echo "## Speech server deployed"
+            echo
+            echo "**Server address:** \`${{ steps.final.outputs.url }}\`"
+            echo
+            echo "Type that address into the app under **Settings -> Server address**, and the value of"
+            echo "\`AUDIOBOOK_API_KEY\` into **Access key**."
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Region | $AZURE_REGION |"
+            echo "| D1 database | $DATABASE (\`${{ steps.d1.outputs.id }}\`) |"
+            echo "| R2 bucket | $BUCKET |"
+            echo "| Parts per background pass | $CHUNKS_PER_PASS |"
+          } >> "$GITHUB_STEP_SUMMARY"
