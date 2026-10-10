@@ -3,7 +3,7 @@
 #
 # Deploy from CI (see .github/workflows/deploy-cloudflare.yml) or by hand:
 #   cd worker && npx wrangler d1 create reavailable-audiobooks   # once, then paste the id below
-#   npx wrangler r2 bucket create reavailable-audiobooks         # once
+#   (KV namespace and D1 are created once; see docs)
 #   npx wrangler secret put AZURE_SPEECH_KEY                     # once
 #   npx wrangler secret put API_KEY                              # once
 #   npx wrangler deploy
@@ -19,12 +19,12 @@ account_id = "ebcc9b4f989feea5bbdee1181f20b61c"
 [[d1_databases]]
 binding = "DB"
 database_name = "reavailable-audiobooks"
-database_id = "D1_DATABASE_ID"
+database_id = "96560435-747f-4833-abc9-72eb9f1a12d2"
 migrations_dir = "migrations"
 
-[[r2_buckets]]
+[[kv_namespaces]]
 binding = "AUDIO"
-bucket_name = "reavailable-audiobooks"
+id = "c3e8ae5258184414a6d28012d7c94242"
 
 [vars]
 AZURE_SPEECH_REGION = "eastus"

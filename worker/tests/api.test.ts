@@ -5,6 +5,7 @@
  * tests stay deterministic; `tests/service.test.ts` covers the pass budget and failure paths.
  */
 
+import { KvAudioStore } from '../src/audio';
 import { SELF, applyD1Migrations, env } from 'cloudflare:test';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createProvider, resolveSettings } from '../src/config';
@@ -94,11 +95,11 @@ async function clearStorage(): Promise<void> {
     testEnv.DB.prepare('DELETE FROM jobs'),
   ]);
   for (;;) {
-    const listed = await testEnv.AUDIO.list({ limit: 1000 });
+    const listed = await new KvAudioStore(testEnv.AUDIO).list({ limit: 1000 });
     if (listed.objects.length === 0) {
       return;
     }
-    await testEnv.AUDIO.delete(listed.objects.map((object) => object.key));
+    await new KvAudioStore(testEnv.AUDIO).delete(listed.objects.map((object) => object.key));
     if (!listed.truncated) {
       return;
     }
@@ -106,7 +107,7 @@ async function clearStorage(): Promise<void> {
 }
 
 async function storedKeys(): Promise<string[]> {
-  const listed = await testEnv.AUDIO.list({ limit: 1000 });
+  const listed = await new KvAudioStore(testEnv.AUDIO).list({ limit: 1000 });
   return listed.objects.map((object) => object.key).sort();
 }
 

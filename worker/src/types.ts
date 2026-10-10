@@ -1,15 +1,15 @@
 /**
  * Bindings and shared record types of the Worker.
  *
- * `Env` is what Cloudflare injects: a D1 database for job and chunk state, an R2 bucket for audio
+ * `Env` is what Cloudflare injects: a D1 database for job and chunk state, a KV namespace for audio
  * bytes, and the operator settings (secrets arrive as strings).
  */
 
 export interface Env {
   /** Job and chunk metadata. */
   DB: D1Database;
-  /** Synthesized audio, deleted again once the device confirms it has the bytes. */
-  AUDIO: R2Bucket;
+  /** Synthesized audio (Workers KV), deleted again once the device confirms it has the bytes. */
+  AUDIO: KVNamespace;
 
   /** Azure AI Speech subscription key. Required unless the fake provider is explicitly allowed. */
   AZURE_SPEECH_KEY?: string;

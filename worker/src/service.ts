@@ -11,6 +11,7 @@
  * Chunk lifecycle: pending -> ready -> acked. Failed chunks return to pending on retry.
  */
 
+import { KvAudioStore } from './audio';
 import type { Settings } from './config';
 import { buildChunks, hasCyrillic } from './chunking';
 import { JobStore } from './db';
@@ -75,7 +76,7 @@ export class JobService {
   private readonly store: JobStore;
   private readonly settings: Settings;
   private readonly tts: TtsProvider;
-  private readonly audio: R2Bucket;
+  private readonly audio: KvAudioStore;
   private readonly now: () => number;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly newId: () => string;
@@ -83,7 +84,7 @@ export class JobService {
 
   constructor(options: ServiceOptions) {
     this.store = new JobStore(options.env.DB);
-    this.audio = options.env.AUDIO;
+    this.audio = new KvAudioStore(options.env.AUDIO);
     this.settings = options.settings;
     this.tts = options.tts;
     this.now = options.now ?? (() => Date.now());

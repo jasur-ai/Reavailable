@@ -5,7 +5,7 @@ import { ConfigurationError, createProvider, resolveSettings } from '../src/conf
 import type { Env } from '../src/types';
 
 function envWith(overrides: Partial<Env> = {}): Env {
-  return { DB: {} as D1Database, AUDIO: {} as R2Bucket, ...overrides };
+  return { DB: {} as D1Database, AUDIO: {} as KVNamespace, ...overrides };
 }
 
 describe('defaults', () => {

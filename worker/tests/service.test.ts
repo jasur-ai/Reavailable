@@ -5,6 +5,7 @@
  * deterministic.
  */
 
+import { KvAudioStore } from '../src/audio';
 import { applyD1Migrations, env } from 'cloudflare:test';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { resolveSettings } from '../src/config';
@@ -33,7 +34,7 @@ async function newJob(service: JobService, transcript: string, title = 'Test kit
 }
 
 async function storedKeys(): Promise<string[]> {
-  const listed = await testEnv.AUDIO.list({ limit: 1000 });
+  const listed = await new KvAudioStore(testEnv.AUDIO).list({ limit: 1000 });
   return listed.objects.map((object) => object.key).sort();
 }
 
@@ -47,11 +48,11 @@ beforeEach(async () => {
     testEnv.DB.prepare('DELETE FROM jobs'),
   ]);
   for (;;) {
-    const listed = await testEnv.AUDIO.list({ limit: 1000 });
+    const listed = await new KvAudioStore(testEnv.AUDIO).list({ limit: 1000 });
     if (listed.objects.length === 0) {
       return;
     }
-    await testEnv.AUDIO.delete(listed.objects.map((object) => object.key));
+    await new KvAudioStore(testEnv.AUDIO).delete(listed.objects.map((object) => object.key));
     if (!listed.truncated) {
       return;
     }
@@ -298,7 +299,7 @@ describe('retention', () => {
     expect((await storedKeys()).length).toBe(2);
 
     // An object whose job row is gone (for example a pass that outlived a deletion).
-    await testEnv.AUDIO.put('11111111-1111-4111-8111-111111111111/000000.wav', new Uint8Array([1, 2, 3]));
+    await new KvAudioStore(testEnv.AUDIO).put('11111111-1111-4111-8111-111111111111/000000.wav', new Uint8Array([1, 2, 3]));
 
     // Still inside the TTL.
     expect(await service.purgeExpired()).toEqual({ expired: 0, orphaned: 1 });
