@@ -13,7 +13,8 @@
     "android": {
       "package": "uz.reavailable.app",
       "adaptiveIcon": {
-        "backgroundColor": "#1F6F5C"
+        "backgroundColor": "#1F6F5C",
+        "foregroundImage": "./assets/adaptive-icon.png"
       },
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",
@@ -37,10 +38,13 @@
       [
         "react-native-vosk",
         {
-          "models": ["assets/model-en-us"],
+          "models": [
+            "assets/model-en-us"
+          ],
           "iOSMicrophonePermission": "Reavailable uses the microphone only to hear the English voice commands while voice control is on."
         }
       ]
-    ]
+    ],
+    "icon": "./assets/icon.png"
   }
 }

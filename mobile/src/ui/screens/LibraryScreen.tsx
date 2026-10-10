@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Image, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import type { BookRecord } from '../../core/types';
 import { bookStatusView, voiceLabel, type Tone } from '../presentation';
 import { Badge, Button, Card, Notice, ProgressBar } from '../components/common';
@@ -50,7 +50,10 @@ export function LibraryScreen(props: LibraryScreenProps) {
       ListHeaderComponent={
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            <Text style={typography.title}>{t('library.title')}</Text>
+            <View style={styles.brand}>
+              <Image source={require('../../../assets/brand/logo.png')} style={styles.logo} accessibilityLabel="Reavailable" />
+              <Text style={typography.title}>{t('library.title')}</Text>
+            </View>
             <Button label={t('library.settings')} variant="ghost" onPress={props.onSettings} />
           </View>
           {!serverConfigured ? <Notice tone="warning">{t('library.serverNeeded')}</Notice> : null}
@@ -132,6 +135,8 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xl },
   header: { gap: spacing.md, marginBottom: spacing.lg },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 },
+  logo: { width: 40, height: 40, borderRadius: 10 },
   flex: { flex: 1 },
   bookHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   code: { ...typography.small, color: colors.danger },
