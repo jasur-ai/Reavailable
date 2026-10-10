@@ -42,20 +42,24 @@ jobs:
         run: |
           set -euo pipefail
           cd release
-          sha256sum app-release.apk > app-release.apk.sha256
-          cat app-release.apk.sha256
+          ls -lh
+          for apk in *.apk; do
+            sha256sum "$apk" > "$apk.sha256"
+          done
+          cat *.sha256
           cat > notes.md <<'EOF'
           Android test build of Reavailable: an offline audiobook reader for Uzbek text.
 
           - The interface opens in Uzbek. English is a switch under Settings -> Interface language.
-          - The APK is debug-signed. It is for sideloading and testing, not for the Play Store.
-          - Install: download app-release.apk, check it against app-release.apk.sha256, allow installs for the app you open it with, then open the file.
+          - Which file: app-arm64-v8a-release.apk for phones from about 2017 onwards (almost every phone), app-armeabi-v7a-release.apk for older 32-bit phones. If one of them refuses to install, use the other.
+          - The APKs are debug-signed. They are for sideloading and testing, not for the Play Store.
+          - Install: download the APK for your phone, check it against the matching .sha256 file, allow installs for the app you open it with (Chrome may warn about the file type: tap Keep), then open the file.
           - You need a running Reavailable server. Deploy it with the "Deploy speech server (Cloudflare Workers)" workflow, then enter the address and the access key under Settings. The release app connects only over HTTPS.
           - Voice commands are English only: next, repeat, pause, resume. They run on the phone with the model inside this APK and work offline.
           - Step-by-step instructions in Uzbek: docs/UZ_INSTALL.md in the repository.
           - Not yet installed or tested on a physical phone. What is and is not verified: docs/TESTING.md.
           EOF
-          gh release create "$TAG" app-release.apk app-release.apk.sha256 \
+          gh release create "$TAG" ./*.apk ./*.apk.sha256 \
             --repo "$GITHUB_REPOSITORY" \
             --title "Reavailable $TAG (Android test build)" \
             --notes-file notes.md \

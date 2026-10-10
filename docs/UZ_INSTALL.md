@@ -125,18 +125,32 @@ sarflab yuboradi. Shu sababli standart qiymat `true`: kalitni bir marta kiritasi
 
 1. GitHub'da: **Releases** → eng yangi pre-release. Server deploy qilingan bo'lsa, eng yangisi
    `android-v0.2.0-server<N>` bo'ladi va unda manzil tayyor; bo'lmasa `android-v0.2.0-test1` ni oling.
-2. **Assets** ro'yxatidan `app-release.apk` (taxminan 150 MB) va `app-release.apk.sha256` ni yuklang.
-3. Telefonda fayl butunligini tekshirish (ixtiyoriy, lekin foydali):
+2. **Assets** ro'yxatidan telefoningizga mos **bitta** APK tanlang:
+
+| Fayl | Kim uchun | Hajmi |
+| --- | --- | --- |
+| `app-arm64-v8a-release.apk` | 2017-yildan keyingi telefonlar (deyarli barchasi) | taxminan 70 MB |
+| `app-armeabi-v7a-release.apk` | Eski 32 bitli telefonlar | taxminan 70 MB |
+
+   Qaysi biri sizniki ekanini bilmasangiz — **arm64** ni oling. "O'rnatilmadi" yoki "Parse error" desa,
+   **armv7** ni sinab ko'ring.
+
+3. Iloji bo'lsa **Wi-Fi** orqali yuklang: fayl katta, mobil internetda uzilib qolishi mumkin. Chrome
+   yuklab olishni boshlaganda "Bu turdagi fayl zararli bo'lishi mumkin" deb ogohlantiradi → **Keep**
+   ("Saqlab qolish") ni bosing. Bu barcha APK fayllar uchun standart ogohlantirish.
+4. (Ixtiyoriy) Fayl butunligini tekshirish:
 
 ```bash
-sha256sum -c app-release.apk.sha256
+sha256sum -c app-arm64-v8a-release.apk.sha256
 ```
 
 `OK` chiqsa, fayl buzilmagan.
 
+Yuklab olish yoki o'rnatish bilan muammo bo'lsa, pastdagi "Muammolar" jadvaliga qarang.
+
 ### 2.2. O'rnating
 
-1. Telefonda `app-release.apk` faylini oching.
+1. Telefonda yuklangan APK faylini (masalan `app-arm64-v8a-release.apk`) oching.
 2. Android "Noma'lum manbalardan o'rnatish"ni so'raydi: **Sozlamalar → bu brauzer/fayl menejeri →
    "Allow from this source"** ni yoqing.
 3. **Install** ni bosing.
@@ -218,6 +232,10 @@ qabul qilinishi mumkin.
 | Serverdagi nusxa muddati tugagan (24 soat) | Telefon allaqachon yuklab olgan qismlar **saqlanadi**. Yetishmayotgan qismlar uchun kitobni qayta qo'shing |
 | Ovozli buyruqlar ishlamayapti | Sozlamalarda "Bu versiyada ovozli buyruqlar mavjud emas" yozuvi bormi? Bo'lsa, bu APK'da nutq moduli yo'q — yangi release APK'ni o'rnating |
 | Ilova `http://` manzilni qabul qilmayapti | Release versiya faqat HTTPS ishlatadi. Workers.dev manzili avtomatik HTTPS |
+| APK yuklanmayapti yoki yarim yo'lda to'xtaydi | Wi-Fi ishlating. Telefonda kamida 500 MB bo'sh joy bo'lsin. Yuklab olishni qayta boshlang (Chrome → Downloads). Eski release emas, **eng yangi** release'dan oling |
+| "Faylni ochib bo'lmadi", "Parse error" yoki "O'rnatilmadi" | Noto'g'ri arxitektura tanlangan: `arm64` o'rniga `armv7` APK'ni sinang (yoki aksincha). Shuningdek telefonda "Noma'lum manbalardan o'rnatish" ruxsati yoqilgan bo'lsin |
+| Chrome APK'ni yuklashdan bosh tortdi | Ogohlantirishda **Keep** ("Saqlab qolish") ni bosing. Yoki havolani fayl menejeri/boshqa brauzer orqali oching |
+| Yuklab olish juda sekin | GitHub fayllari ba'zi mintaqalarda sekin beriladi. Wi-Fi'ni sinang, yoki kompyuterda yuklab olib telefonga (USB/Telegram) o'tkazing |
 
 Agar deploy workflow qizil bo'lsa: **Actions → ishni oching → "Check the required secrets"** yoki
 **"Check the deployed server"** qadamidagi xatoni o'qing. Ko'pincha secret nomi noto'g'ri yoki Cloudflare

@@ -128,10 +128,13 @@ Python service and the Cloudflare Worker (CI has a job for each).
   the Python reference), container, end-to-end against the Python backend, and end-to-end against a live
   Worker started with `wrangler dev` in the job. The same six jobs passed on `f14d245` (run `38035706095`).
   Earlier runs on `1320a8c` (run `37965656119`) covered the four jobs that existed then.
-- **Android APK** (`android-build.yml`) builds a release APK on an Ubuntu runner (runs `37964171967` and
-  `37965656458`). The build checks the APK itself: the Vosk model is inside it, `classes.dex` and the signature
-  are present, the package name is `uz.reavailable.app`, the app requests `RECORD_AUDIO` and `INTERNET`, and it
-  does not request `SYSTEM_ALERT_WINDOW`, `VIBRATE` or the external-storage permissions.
+- **Android APK** (`android-build.yml`) builds release APKs on an Ubuntu runner (runs `37964171967` and
+  `37965656458` for the single-APK build). The build checks the APK itself: the Vosk model is inside it,
+  `classes.dex` and the signature are present, the package name is `uz.reavailable.app`, the app requests
+  `RECORD_AUDIO` and `INTERNET`, and it does not request `SYSTEM_ALERT_WINDOW`, `VIBRATE` or the
+  external-storage permissions. The build now splits per CPU architecture and additionally checks that each
+  split APK carries the native libraries of its own architecture and none of the other three; that change is
+  verified by the release run recorded below.
 - **Backend container** (`container` job in CI): the image builds, refuses to start in production without
   credentials, starts with the documented production settings and passes the health check. In development mode it
   runs as uid 10001 and accepts a job with `202`.

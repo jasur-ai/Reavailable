@@ -23,13 +23,14 @@ Cloudflare Workers (recommended, [`worker/`](worker)) or run as a container on y
 
 ## Get the app
 
-**Android (test build).** Download `app-release.apk` and `app-release.apk.sha256` from the newest
-pre-release on the [releases page](https://github.com/jasur-ai/Reavailable/releases) (about 150 MB); the
-current one is [`android-v0.2.0-test1`](https://github.com/jasur-ai/Reavailable/releases/tag/android-v0.2.0-test1),
-which has the hosted-server support and the Uzbek interface. Check
-the download with `sha256sum -c app-release.apk.sha256`, allow installs from the app you open the file with,
-and install it. The APK is debug-signed, so it is for testing and sideloading, not for the Play Store. It
-needs a running Reavailable server (see below). It has not been installed and tested on a phone yet.
+**Android (test build).** Open the newest pre-release on the
+[releases page](https://github.com/jasur-ai/Reavailable/releases) and download **one** APK:
+`app-arm64-v8a-release.apk` for phones from roughly 2017 onwards (almost every phone), or
+`app-armeabi-v7a-release.apk` for older 32-bit phones. Each is about 70 MB, because the build is split per
+CPU architecture; a single APK with all four architectures would be about 148 MB. Each APK has a matching
+`.sha256` file (`sha256sum -c <file>.sha256`). Allow installs from the app you open the file with, and
+install it. The APKs are debug-signed, so they are for testing and sideloading, not for the Play Store.
+They need a running Reavailable server (see below). They have not been installed and tested on a phone yet.
 
 Step-by-step instructions in Uzbek, from installing the APK to hearing the first book, are in
 [docs/UZ_INSTALL.md](docs/UZ_INSTALL.md).

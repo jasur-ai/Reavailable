@@ -1,7 +1,13 @@
 name: Android build (reusable)
 
-# Builds a release APK. Called by android-apk.yml (branch builds) and android-release.yml (tagged
-# releases). The APK is uploaded as the artifact "reavailable-android-apk".
+# Builds release APKs, one per CPU architecture, plus a universal fallback. Called by android-apk.yml
+# (branch builds) and android-release.yml (tagged releases). The APKs are uploaded as the artifact
+# "reavailable-android-apk".
+#
+# One APK per architecture matters for downloading: the app bundles the offline English speech model
+# and the native libraries of React Native, Hermes and Vosk. A single APK for all four architectures
+# is about 148 MB, which is a fragile download on a phone. Per-architecture APKs are roughly half
+# that, and only the two ARM architectures real phones use are built.
 #
 # The APK is signed with the Expo debug keystore (the default for release builds in a prebuild
 # project). It is suitable for sideloading and testing, not for the Play Store.
@@ -58,7 +64,37 @@ jobs:
           CI: "1"
           EXPO_PUBLIC_DEFAULT_SERVER_URL: ${{ inputs.default_server_url }}
 
-      - name: Build the APK
+      - name: Build one APK per CPU architecture
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          # Only the ARM architectures phones actually use; x86 and x86_64 are for emulators.
+          if grep -q '^reactNativeArchitectures=' gradle.properties; then
+            sed -i 's/^reactNativeArchitectures=.*/reactNativeArchitectures=armeabi-v7a,arm64-v8a/' gradle.properties
+          else
+            echo 'reactNativeArchitectures=armeabi-v7a,arm64-v8a' >> gradle.properties
+          fi
+          grep -n '^reactNativeArchitectures=' gradle.properties
+
+          # Split by ABI, which also filters the prebuilt native libraries of third-party modules
+          # (Vosk above all). A universal APK is built as a fallback for unusual devices.
+          cat >> app/build.gradle <<'GRADLE'
+
+          // Added by CI: one APK per CPU architecture, so each download is much smaller.
+          android {
+              splits {
+                  abi {
+                      enable true
+                      reset()
+                      include "armeabi-v7a", "arm64-v8a"
+                      universalApk true
+                  }
+              }
+          }
+          GRADLE
+          tail -n 14 app/build.gradle
+
+      - name: Build the APKs
         working-directory: mobile/android
         run: |
           chmod +x gradlew
@@ -76,42 +112,92 @@ jobs:
           else
             echo "No server address baked in; the app asks for it in Settings."
           fi
-          apk=android/app/build/outputs/apk/release/app-release.apk
-          ls -lh "$apk"
-          unzip -l "$apk" > apk-contents.txt
-          for required in classes.dex assets/model-en-us/am/final.mdl META-INF/; do
-            if ! grep -q "$required" apk-contents.txt; then
-              echo "error: '$required' is missing from the APK" >&2
-              exit 1
-            fi
-          done
+          dir=android/app/build/outputs/apk/release
+          ls -lh "$dir"
+          apks=$(find "$dir" -name '*.apk' | sort)
+          if [ -z "$apks" ]; then
+            echo "error: no APK was produced" >&2
+            exit 1
+          fi
           sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           tool=$(find "$sdk/build-tools" -name aapt2 -type f | sort -V | tail -1)
           if [ -z "$tool" ]; then
             tool=$(find "$sdk/build-tools" -name aapt -type f | sort -V | tail -1)
           fi
-          "$tool" dump badging "$apk" > badging.txt
-          grep "^package:" badging.txt
-          grep "uses-permission" badging.txt | sed "s/^/  /"
-          for expected in android.permission.RECORD_AUDIO android.permission.INTERNET; do
-            if ! grep -q "name='$expected'" badging.txt; then
-              echo "error: permission $expected is missing" >&2
+
+          for apk in $apks; do
+            echo "=== $apk ($(du -h "$apk" | cut -f1))"
+            unzip -l "$apk" > apk-contents.txt
+            for required in classes.dex assets/model-en-us/am/final.mdl META-INF/; do
+              if ! grep -q "$required" apk-contents.txt; then
+                echo "error: '$required' is missing from $apk" >&2
+                exit 1
+              fi
+            done
+            # A split APK must carry the native libraries of its own architecture only.
+            case "$apk" in
+              *arm64-v8a*)
+                grep -q "lib/arm64-v8a/" apk-contents.txt || { echo "error: no arm64 libraries in $apk" >&2; exit 1; }
+                for other in armeabi-v7a x86_64 x86; do
+                  if grep -q "lib/$other" apk-contents.txt; then
+                    echo "error: $apk still contains $other libraries" >&2
+                    exit 1
+                  fi
+                done
+                ;;
+              *armeabi-v7a*)
+                grep -q "lib/armeabi-v7a/" apk-contents.txt || { echo "error: no armv7 libraries in $apk" >&2; exit 1; }
+                for other in arm64-v8a x86_64 x86; do
+                  if grep -q "lib/$other" apk-contents.txt; then
+                    echo "error: $apk still contains $other libraries" >&2
+                    exit 1
+                  fi
+                done
+                ;;
+            esac
+            "$tool" dump badging "$apk" > badging.txt
+            grep "^package:" badging.txt
+            grep "uses-permission" badging.txt | sed "s/^/  /"
+            grep "^native-code:" badging.txt | sed "s/^/  /" || true
+            for expected in android.permission.RECORD_AUDIO android.permission.INTERNET; do
+              if ! grep -q "name='$expected'" badging.txt; then
+                echo "error: permission $expected is missing from $apk" >&2
+                exit 1
+              fi
+            done
+            for unwanted in SYSTEM_ALERT_WINDOW VIBRATE READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE; do
+              if grep -q "name='android.permission.$unwanted'" badging.txt; then
+                echo "error: unexpected permission $unwanted in $apk" >&2
+                exit 1
+              fi
+            done
+            if ! grep -q "^package: name='uz.reavailable.app'" badging.txt; then
+              echo "error: unexpected package name in $apk" >&2
               exit 1
             fi
-          done
-          for unwanted in SYSTEM_ALERT_WINDOW VIBRATE READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE; do
-            if grep -q "name='android.permission.$unwanted'" badging.txt; then
-              echo "error: unexpected permission $unwanted in the APK" >&2
-              exit 1
+            size=$(stat -c %s "$apk")
+            if [ "$size" -gt 120000000 ]; then
+              echo "::warning::$apk is $size bytes: the ABI split may not have taken effect."
             fi
           done
-          if ! grep -q "^package: name='uz.reavailable.app'" badging.txt; then
-            echo "error: unexpected package name" >&2
-            exit 1
+      - name: Keep the APKs a phone can use
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          dir=android/app/build/outputs/apk/release
+          # The universal APK is the fallback for an unusual device, but it is twice the size, so it
+          # is not published when the per-architecture APKs were built.
+          if compgen -G "$dir/app-a*-release.apk" > /dev/null; then
+            rm -f "$dir/app-universal-release.apk"
+            echo "Publishing the per-architecture APKs:"
+          else
+            echo "::warning::No per-architecture APK was produced; publishing the single APK instead."
           fi
+          ls -lh "$dir"
+
       - uses: actions/upload-artifact@v4
         with:
           name: reavailable-android-apk
-          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          path: mobile/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30

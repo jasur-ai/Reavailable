@@ -81,19 +81,28 @@ re-renders, including the status of each book.
 ## Android test build
 
 The test APK is published as a pre-release on the [Releases page](https://github.com/jasur-ai/Reavailable/releases).
-Pre-releases use the tag pattern `android-v*`; use the newest one. Each release has two files: `app-release.apk` and `app-release.apk.sha256`.
+Pre-releases use the tag pattern `android-v*`; use the newest one. Each release carries one APK per CPU
+architecture plus a `.sha256` file for each.
 
-1. Download both files to the phone or to a computer.
-2. Check the APK: `sha256sum -c app-release.apk.sha256`.
-3. Allow installs from the app you open the file with, then open `app-release.apk`.
+1. Download the APK for the phone: `app-arm64-v8a-release.apk` (phones from roughly 2017 onwards) or
+   `app-armeabi-v7a-release.apk` (older 32-bit phones). If one refuses to install, use the other.
+2. Check it: `sha256sum -c app-arm64-v8a-release.apk.sha256`.
+3. Allow installs from the app you open the file with, then open the APK.
 4. Open **Settings** and enter the HTTPS address of your server and its access key. The server is either the
    Cloudflare Worker ([worker/README.md](../worker/README.md)) or the container
    ([backend/README.md](../backend/README.md)).
 5. Tap **Test connection**: it reports the server version, its provider and the available voices, and it
    tells you whether the access key was accepted.
 
-The APK is signed with the Expo debug keystore, so it is for testing and sideloading, not for the Play Store.
-Its voice model is the one the build downloads from `alphacephei.com` (see the limitations).
+The APKs are signed with the Expo debug keystore, so they are for testing and sideloading, not for the Play
+Store. Their voice model is the one the build downloads from `alphacephei.com` (see the limitations).
+
+The build splits per CPU architecture (`armeabi-v7a` and `arm64-v8a`), because the offline speech model plus
+the native libraries of React Native, Hermes and Vosk make a single all-architecture APK about 148 MB, which
+is a fragile download on a phone. A universal APK is built as a fallback but is not published. The build
+checks every APK it produces: the model is inside, the native libraries match the architecture in the file
+name and contain no other architecture, the package name is `uz.reavailable.app`, and the permissions are the
+expected ones.
 
 The build runs on GitHub Actions in [`.github/workflows/android-build.yml`](../.github/workflows/android-build.yml).
 Pushing a tag named `android-v*` publishes a release ([`android-release.yml`](../.github/workflows/android-release.yml)).
