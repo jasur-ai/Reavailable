@@ -54,9 +54,11 @@ jobs:
     name: Provision and deploy
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # Needed by the last step, which commits the deployed address and pushes the release tag.
+    # Needed by the last step, which commits the deployed address, pushes the release tag and starts
+    # the APK release workflow.
     permissions:
       contents: write
+      actions: write
     defaults:
       run:
         working-directory: worker
@@ -221,6 +223,8 @@ jobs:
 
       - name: Record the address in the app and publish a ready-to-use APK
         working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           url="${{ steps.final.outputs.url }}"
@@ -245,9 +249,12 @@ jobs:
           git tag -a "$tag" -m "Android build with the deployed server address ($url)"
 
           # Publishing must never mask a successful deployment, so a push problem is a warning.
-          if git push origin "HEAD:$branch" && git push origin "$tag"; then
+          # A tag pushed with GITHUB_TOKEN does not start push-triggered workflows, so the release
+          # workflow is dispatched explicitly (workflow_dispatch is allowed for GITHUB_TOKEN).
+          if git push origin "HEAD:$branch" && git push origin "$tag" \
+            && gh workflow run android-release.yml --ref "$branch" -f tag="$tag"; then
             echo "published=$tag" >> "$GITHUB_ENV"
-            echo "Pushed $tag: android-release.yml now builds an APK that opens with the address filled in."
+            echo "Started android-release.yml for $tag: it builds an APK that opens with the address filled in."
           else
             echo "::warning::The server is live at $url, but the address could not be pushed. Enter it in the app under Settings -> Server address."
             echo "published=no" >> "$GITHUB_ENV"
