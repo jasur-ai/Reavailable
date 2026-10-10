@@ -29,12 +29,12 @@ id = "c3e8ae5258184414a6d28012d7c94242"
 [vars]
 AZURE_SPEECH_REGION = "eastus"
 AZURE_OUTPUT_FORMAT = "audio-24khz-48kbitrate-mono-mp3"
-ALLOWED_VOICES = "uz-UZ-MadinaNeural,uz-UZ-SardorNeural"
+ALLOWED_VOICES = "uz-UZ-MadinaNeural,uz-UZ-SardorNeural,en-US-JennyNeural,en-US-GuyNeural"
 DEFAULT_VOICE = "uz-UZ-MadinaNeural"
 VERSION = "0.2.0"
 MAX_TRANSCRIPT_CHARS = "200000"
 MAX_CHUNK_CHARS = "600"
-MAX_CHUNKS_PER_JOB = "2000"
+MAX_CHUNKS_PER_JOB = "6000"
 JOB_TTL_HOURS = "24"
 # A synthesis pass does at most this many parts, then the app's next status poll continues it.
 # Raise this on a Workers Paid plan (30 s of CPU per request instead of 10 ms).

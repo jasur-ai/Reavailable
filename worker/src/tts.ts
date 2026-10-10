@@ -37,7 +37,7 @@ export interface TtsProvider {
 
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 
-const SSML_LANGUAGE = 'uz-UZ';
+const DEFAULT_SSML_LANGUAGE = 'uz-UZ';
 const USER_AGENT = 'reavailable-worker/0.2';
 const INVALID_XML_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g;
 const REGION_PATTERN = /^[a-z0-9]+$/;
@@ -58,11 +58,18 @@ function escapeXml(text: string): string {
     .replace(/'/g, '&apos;');
 }
 
+/** Azure voice names start with their locale, for example `en-US-JennyNeural` -> `en-US`. */
+export function languageOfVoice(voice: string): string {
+  const match = /^([a-z]{2,3}-[A-Z]{2})-/.exec(voice);
+  return match ? match[1] : DEFAULT_SSML_LANGUAGE;
+}
+
 /** Build an SSML document for one voice. Text and attribute values are XML-escaped. */
 export function buildSsml(text: string, voice: string): string {
   const safeText = text.replace(INVALID_XML_CHARS, '');
+  const language = languageOfVoice(voice);
   return (
-    `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${SSML_LANGUAGE}">` +
+    `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${language}">` +
     `<voice name="${escapeXml(voice)}">${escapeXml(safeText)}</voice>` +
     '</speak>'
   );

@@ -9,7 +9,13 @@
 import { createAzureProvider, createFakeProvider, AZURE_FORMATS, type TtsProvider } from './tts';
 import type { Env } from './types';
 
-export const DEFAULT_UZBEK_VOICES = ['uz-UZ-MadinaNeural', 'uz-UZ-SardorNeural'] as const;
+/** Two voices (female and male) per language. Labels in the app are generic, never names. */
+export const DEFAULT_VOICES = [
+  'uz-UZ-MadinaNeural',
+  'uz-UZ-SardorNeural',
+  'en-US-JennyNeural',
+  'en-US-GuyNeural',
+] as const;
 
 export class ConfigurationError extends Error {
   constructor(message: string) {
@@ -77,7 +83,7 @@ export function resolveSettings(env: Env): Settings {
     throw new ConfigurationError("AZURE_SPEECH_REGION must be lowercase letters and digits, for example 'eastus'");
   }
 
-  const allowedVoices = (env.ALLOWED_VOICES ?? DEFAULT_UZBEK_VOICES.join(','))
+  const allowedVoices = (env.ALLOWED_VOICES ?? DEFAULT_VOICES.join(','))
     .split(',')
     .map((voice) => voice.trim())
     .filter((voice) => voice.length > 0);
@@ -101,7 +107,7 @@ export function resolveSettings(env: Env): Settings {
     maxRequestBytes: intFrom(env.MAX_REQUEST_BYTES, 2_000_000, 1_024, 20_000_000),
     maxTranscriptChars: intFrom(env.MAX_TRANSCRIPT_CHARS, 200_000, 1, 2_000_000),
     maxChunkChars: intFrom(env.MAX_CHUNK_CHARS, 600, 50, 3_000),
-    maxChunksPerJob: intFrom(env.MAX_CHUNKS_PER_JOB, 3_000, 1, 20_000),
+    maxChunksPerJob: intFrom(env.MAX_CHUNKS_PER_JOB, 6_000, 1, 20_000),
     jobTtlHours: intFrom(env.JOB_TTL_HOURS, 24, 1, 24 * 30),
     chunksPerPass: intFrom(env.CHUNKS_PER_PASS, 8, 1, 200),
     ttsConcurrency: intFrom(env.TTS_CONCURRENCY, 3, 1, 10),

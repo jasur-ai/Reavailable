@@ -9,16 +9,21 @@ function envWith(overrides: Partial<Env> = {}): Env {
 }
 
 describe('defaults', () => {
-  it('assume Azure in eastus with the Uzbek neural voices', () => {
+  it('assume Azure in eastus with Uzbek and English neural voices', () => {
     const settings = resolveSettings(envWith({ AZURE_SPEECH_KEY: 'key' }));
     expect(settings.providerName).toBe('azure');
     expect(settings.region).toBe('eastus');
     expect(settings.outputFormat).toBe('audio-24khz-48kbitrate-mono-mp3');
-    expect(settings.allowedVoices).toEqual(['uz-UZ-MadinaNeural', 'uz-UZ-SardorNeural']);
+    expect(settings.allowedVoices).toEqual([
+      'uz-UZ-MadinaNeural',
+      'uz-UZ-SardorNeural',
+      'en-US-JennyNeural',
+      'en-US-GuyNeural',
+    ]);
     expect(settings.defaultVoice).toBe('uz-UZ-MadinaNeural');
     expect(settings.maxTranscriptChars).toBe(200_000);
     expect(settings.maxChunkChars).toBe(600);
-    expect(settings.maxChunksPerJob).toBe(3_000);
+    expect(settings.maxChunksPerJob).toBe(6_000);
     expect(settings.jobTtlHours).toBe(24);
     expect(settings.chunksPerPass).toBe(8);
     expect(settings.ttsMaxAttempts).toBe(3);
