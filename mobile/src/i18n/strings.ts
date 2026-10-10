@@ -42,8 +42,6 @@ export const STRINGS = {
       + 'This cannot be undone.',
   },
   'library.voiceLabel': { uz: 'Ovoz: {voice}', en: 'Voice: {voice}' },
-  'library.voiceMadina': { uz: 'Madina (ayol)', en: 'Madina (female)' },
-  'library.voiceSardor': { uz: 'Sardor (erkak)', en: 'Sardor (male)' },
   'library.cyrillicNote': {
     uz: "Kirill matni bor (noto'g'ri talaffuz qilinishi mumkin)",
     en: 'Contains Cyrillic text (may be mispronounced)',
@@ -54,10 +52,8 @@ export const STRINGS = {
   // ---------------------------------------------------------------- add a book
   'addBook.title': { uz: "Kitob qo'shish", en: 'Add a book' },
   'addBook.notice': {
-    uz: "O'zbekcha matn joylang (lotin yozuvi yaxshiroq ishlaydi) yoki .txt / .md fayl tanlang. Matn serverga faqat "
-      + 'ovoz yaratish uchun yuboriladi. Telefon barcha qismlarni yuklab olib tasdiqlagach, server o\'z nusxasini o\'chiradi.',
-    en: 'Paste Uzbek text (Latin script works best) or load a .txt, .md, .docx or .pdf file. The text is sent to the server only to '
-      + 'create audio. The server deletes its copy as soon as this phone has downloaded and confirmed every part.',
+    uz: 'Kitob, PDF, DOCX yoki matn faylini yuklang, yoki matnni pastga joylang. Matn ovoz yaratish uchun serverga yuboriladi.',
+    en: 'Load a book, PDF, DOCX or text file, or paste the text below. The text is sent to the server to create audio.',
   },
   'addBook.titleLabel': { uz: 'Sarlavha', en: 'Title' },
   'addBook.titlePlaceholder': { uz: 'Masalan: 1-bob', en: 'For example: Chapter 1' },
@@ -93,8 +89,8 @@ export const STRINGS = {
   'errors.titleTooLong': { uz: 'Sarlavha {max} belgidan oshmasin.', en: 'Keep the title under {max} characters.' },
   'errors.transcriptRequired': { uz: 'Matn joylang yoki fayl yuklang.', en: 'Paste the text or load a file.' },
   'errors.transcriptTooLong': {
-    uz: 'Matn juda uzun. Chegara — {max} belgi.',
-    en: 'The text is too long. The limit is {max} characters.',
+    uz: 'Matn {max} belgidan oshmasin.',
+    en: 'Keep the text under {max} characters.',
   },
 
   // ---------------------------------------------------------------- player
@@ -166,8 +162,8 @@ export const STRINGS = {
     en: 'Note: the server is running the {provider} provider, not a real Uzbek voice.',
   },
   'settings.voicesLine': {
-    uz: 'Mavjud ovozlar: {voices}. Standart: {default}.',
-    en: 'Available voices: {voices}. Default: {default}.',
+    uz: 'Serverda {count} ta ovoz mavjud.',
+    en: 'The server offers {count} voices.',
   },
   'settings.keyRejected': {
     uz: 'Server javob berdi, lekin bu kirish kalitini qabul qilmadi. Kalitni tekshiring.',
@@ -454,6 +450,71 @@ export const STRINGS = {
     en: 'The file could not be read. It may be damaged or password-protected.',
   },
   'error.fallback': { uz: 'Nimadir xato ketdi. Qayta urinib ko\'ring.', en: 'Something went wrong. Try again.' },
+
+  // ---------------------------------------------------------------- add a book: language and voice
+  'addBook.languageLabel': { uz: 'Matn tili', en: 'Text language' },
+  'addBook.voiceLabel': { uz: 'Ovoz', en: 'Voice' },
+  'addBook.voiceFemale': { uz: 'Ayol', en: 'Female' },
+  'addBook.voiceMale': { uz: 'Erkak', en: 'Male' },
+  'addBook.languageUz': { uz: "O'zbekcha", en: 'Uzbek' },
+  'addBook.languageEn': { uz: 'English', en: 'English' },
+  'addBook.longTextHint': {
+    uz: "Matn juda uzun. U {parts} ta kitobga bo'linadi (1-qism, 2-qism…).",
+    en: 'The text is long. It will be split into {parts} books (part 1, part 2…).',
+  },
+  'addBook.sectionText': { uz: 'Matn', en: 'Text' },
+  'addBook.sectionVoice': { uz: 'Ovoz va til', en: 'Voice and language' },
+  'addBook.sectionParts': { uz: 'Qism uzunligi', en: 'Part length' },
+  'addBook.sourceHint': {
+    uz: "Kitob, PDF, DOCX yoki matn faylini yuklang, yoki matnni pastga joylang.",
+    en: 'Load a book, PDF, DOCX or text file, or paste the text below.',
+  },
+  'addBook.detailPrefix': { uz: 'Tafsilot', en: 'Details' },
+
+  // ---------------------------------------------------------------- voices (gender and language only)
+  'voice.female': { uz: 'Ayol ovozi', en: 'Female voice' },
+  'voice.male': { uz: 'Erkak ovozi', en: 'Male voice' },
+  'voice.langUz': { uz: "O'zbekcha", en: 'Uzbek' },
+  'voice.langEn': { uz: 'English', en: 'English' },
+  'voice.unknown': { uz: 'Ovoz', en: 'Voice' },
+
+  // ---------------------------------------------------------------- navigation
+  'tabs.library': { uz: 'Kitoblar', en: 'Books' },
+  'tabs.add': { uz: "Qo'shish", en: 'Add' },
+  'tabs.settings': { uz: 'Sozlamalar', en: 'Settings' },
+  'tabs.label': { uz: 'Asosiy bo\'limlar', en: 'Main sections' },
+
+  // ---------------------------------------------------------------- voice command indicator
+  'voiceIndicator.listening': { uz: 'Ovozli buyruq tinglanmoqda', en: 'Listening for voice commands' },
+  'voiceIndicator.heard': { uz: 'Qabul qilindi: {command}', en: 'Heard: {command}' },
+  'voiceCommand.next': { uz: 'Keyingi', en: 'Next' },
+  'voiceCommand.repeat': { uz: 'Takrorlash', en: 'Repeat' },
+  'voiceCommand.pause': { uz: 'Pauza', en: 'Pause' },
+  'voiceCommand.resume': { uz: 'Davom etish', en: 'Resume' },
+
+  // ---------------------------------------------------------------- app updates
+  'update.heading': { uz: 'Ilova yangilanishi', en: 'App update' },
+  'update.current': { uz: 'Joriy versiya: {version} ({code})', en: 'Current version: {version} ({code})' },
+  'update.check': { uz: 'Yangilanishni tekshirish', en: 'Check for updates' },
+  'update.checking': { uz: 'Tekshirilmoqda…', en: 'Checking…' },
+  'update.upToDate': { uz: "Eng so'nggi versiya o'rnatilgan.", en: 'You have the latest version.' },
+  'update.available': {
+    uz: 'Yangi versiya tayyor: {version}. Kitoblaringiz saqlanib qoladi.',
+    en: 'New version ready: {version}. Your books are kept.',
+  },
+  'update.install': { uz: 'Yangilash', en: 'Update' },
+  'update.downloading': { uz: 'Yuklanmoqda…', en: 'Downloading…' },
+  'update.installHint': {
+    uz: "Android o'rnatuvchisi ochiladi. So'ralsa, bu ilovaga 'Noma'lum manbalardan o'rnatish' ruxsatini bering.",
+    en: "Android's installer opens. If asked, allow installs from this app.",
+  },
+  'update.failed': {
+    uz: "Yangilanishni yuklab bo'lmadi. Internetni tekshirib, qayta urining.",
+    en: 'The update could not be downloaded. Check the connection and try again.',
+  },
+  'update.noApk': { uz: 'Bu qurilma uchun mos APK topilmadi.', en: 'No APK matches this device.' },
+  'update.bannerAction': { uz: 'Yangilash', en: 'Update' },
+  'update.onlyAndroid': { uz: 'Yangilash faqat Android ilovada ishlaydi.', en: 'Updates work only in the Android app.' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

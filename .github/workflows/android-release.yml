@@ -1,8 +1,9 @@
 name: Android release
 
-# Publishes a GitHub pre-release with the APK when a tag named android-v* is pushed, for example:
-#   git tag android-v0.2.0-test1 && git push origin android-v0.2.0-test1
-# The pre-release carries app-release.apk and its SHA-256 checksum.
+# Publishes a GitHub pre-release with the APKs when a tag named android-v* is pushed, for example:
+#   git tag android-v0.2.3-cf4 && git push origin android-v0.2.3-cf4
+# The pre-release carries one APK per CPU architecture, their SHA-256 checksums, and update.json.
+# The installed app reads update.json to find out whether a newer build exists (see mobile/src/core/update).
 #
 # Set the repository variable DEFAULT_SERVER_URL (Settings -> Secrets and variables -> Actions ->
 # Variables) to the deployed speech server address, and the published APK starts with that address
@@ -37,7 +38,16 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          # Only the version numbers are needed, from the commit of the tag.
+          ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          sparse-checkout: mobile/app.json
+          sparse-checkout-cone-mode: false
+
       - uses: actions/download-artifact@v4
         with:
           name: reavailable-android-apk
@@ -46,28 +56,52 @@ jobs:
       - name: Create the pre-release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
+          VERSION_CODE=$(node -p "require('./mobile/app.json').expo.android.versionCode")
+          VERSION_NAME=$(node -p "require('./mobile/app.json').expo.version")
+          if [ -z "$VERSION_CODE" ] || [ "$VERSION_CODE" = "undefined" ]; then
+            echo "mobile/app.json has no android.versionCode; refusing to publish an update that cannot be detected." >&2
+            exit 1
+          fi
           cd release
           ls -lh
           for apk in *.apk; do
             sha256sum "$apk" > "$apk.sha256"
           done
           cat *.sha256
-          cat > notes.md <<'EOF'
-          Android test build of Reavailable: an offline audiobook reader for Uzbek text.
 
-          - The interface opens in Uzbek. English is a switch under Settings -> Interface language.
-          - Which file: app-arm64-v8a-release.apk for phones from about 2017 onwards (almost every phone), app-armeabi-v7a-release.apk for older 32-bit phones. If one of them refuses to install, use the other.
+          # update.json: what the installed app compares against, and where each CPU's APK lives.
+          VERSION_CODE="$VERSION_CODE" VERSION_NAME="$VERSION_NAME" node -e '
+            const fs = require("fs");
+            const tag = process.env.TAG;
+            const repo = process.env.GITHUB_REPOSITORY;
+            const apks = {};
+            for (const abi of ["arm64-v8a", "armeabi-v7a"]) {
+              const name = "app-" + abi + "-release.apk";
+              if (!fs.existsSync(name)) continue;
+              const sha256 = fs.readFileSync(name + ".sha256", "utf8").split(" ")[0];
+              apks[abi] = { url: "https://github.com/" + repo + "/releases/download/" + tag + "/" + name, sha256 };
+            }
+            fs.writeFileSync("update.json", JSON.stringify({
+              versionCode: Number(process.env.VERSION_CODE),
+              versionName: process.env.VERSION_NAME,
+              tag,
+              apks,
+            }, null, 2) + "\n");
+          '
+          cat update.json
+
+          cat > notes.md <<'EOF'
+          Reavailable test build: offline audiobook reader for Uzbek and English text.
+
+          - Which file: app-arm64-v8a-release.apk for almost every phone. app-armeabi-v7a-release.apk is for older 32-bit phones only.
+          - Updating: if Reavailable is already installed, open Settings in the app and tap "Check for updates". The app downloads the file and opens Android's installer. Your books are kept.
+          - Install by hand: download the APK, check it against its .sha256 file, allow installs for the app you open it with, then open the file.
           - The APKs are debug-signed. They are for sideloading and testing, not for the Play Store.
-          - Install: download the APK for your phone, check it against the matching .sha256 file, allow installs for the app you open it with (Chrome may warn about the file type: tap Keep), then open the file.
-          - You need a running Reavailable server. Deploy it with the "Deploy speech server (Cloudflare Workers)" workflow, then enter the address and the access key under Settings. The release app connects only over HTTPS.
-          - Voice commands are English only: next, repeat, pause, resume. They run on the phone with the model inside this APK and work offline.
-          - Step-by-step instructions in Uzbek: docs/UZ_INSTALL.md in the repository.
-          - Not yet installed or tested on a physical phone. What is and is not verified: docs/TESTING.md.
+          - Voice commands (English): next, repeat, pause, resume. They run on the phone and work offline.
           EOF
-          gh release create "$TAG" ./*.apk ./*.apk.sha256 \
+          gh release create "$TAG" ./*.apk ./*.apk.sha256 ./update.json \
             --repo "$GITHUB_REPOSITORY" \
             --title "Reavailable $TAG (Android test build)" \
             --notes-file notes.md \

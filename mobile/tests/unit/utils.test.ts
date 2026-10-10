@@ -260,21 +260,21 @@ describe('presentation: playback and voice messages', () => {
   });
 
   it('tells the user which commands to say while listening', () => {
-    expect(voiceMessage({ status: 'listening', message: null, lastCommand: null }, en)).toBe(
+    expect(voiceMessage({ status: 'listening', message: null, lastCommand: null, lastCommandAt: null }, en)).toBe(
       'Listening. Say "next", "repeat", "pause" or "resume".',
     );
     // The commands themselves stay English in every interface language.
-    expect(voiceMessage({ status: 'listening', message: null, lastCommand: null }, uz)).toMatch(/next/);
-    expect(voiceMessage({ status: 'off', message: null, lastCommand: null }, en)).toMatch(/off/);
-    expect(voiceMessage({ status: 'error', message: 'Busy.', lastCommand: null }, en)).toBe(
+    expect(voiceMessage({ status: 'listening', message: null, lastCommand: null, lastCommandAt: null }, uz)).toMatch(/next/);
+    expect(voiceMessage({ status: 'off', message: null, lastCommand: null, lastCommandAt: null }, en)).toMatch(/off/);
+    expect(voiceMessage({ status: 'error', message: 'Busy.', lastCommand: null, lastCommandAt: null }, en)).toBe(
       'Voice commands stopped: Busy.',
     );
-    expect(voiceMessage({ status: 'error', message: null, lastCommand: null }, en)).toBe('Voice commands stopped.');
-    expect(voiceMessage({ status: 'unavailable', message: null, lastCommand: null }, en)).toMatch(/not available/);
+    expect(voiceMessage({ status: 'error', message: null, lastCommand: null, lastCommandAt: null }, en)).toBe('Voice commands stopped.');
+    expect(voiceMessage({ status: 'unavailable', message: null, lastCommand: null, lastCommandAt: null }, en)).toMatch(/not available/);
   });
 
   it('explains a build without the speech module in the interface language', () => {
-    const snapshot = { status: 'unavailable' as const, message: 'internal build detail', lastCommand: null };
+    const snapshot = { status: 'unavailable' as const, message: 'internal build detail', lastCommand: null, lastCommandAt: null };
     expect(voiceMessage(snapshot, en)).toMatch(/development build/);
     expect(voiceMessage(snapshot, uz)).not.toMatch(/internal build detail/);
   });
@@ -308,10 +308,11 @@ describe('presentation: new book validation', () => {
     expect(containsCyrillic('Салом')).toBe(true);
   });
 
-  it('names the configured Uzbek voices and leaves others alone', () => {
-    expect(voiceLabel('uz-UZ-MadinaNeural', en)).toBe('Madina (female)');
-    expect(voiceLabel('uz-UZ-SardorNeural', uz)).toBe('Sardor (erkak)');
-    expect(voiceLabel('fake-uz', en)).toBe('fake-uz');
+  it('labels voices by gender and language, never by a personal name', () => {
+    expect(voiceLabel('uz-UZ-MadinaNeural', en)).toBe('Female voice · Uzbek');
+    expect(voiceLabel('uz-UZ-SardorNeural', uz)).toBe("Erkak ovozi · O'zbekcha");
+    expect(voiceLabel('en-US-GuyNeural', en)).toBe('Male voice · English');
+    expect(voiceLabel('fake-uz', en)).toBe('Voice');
   });
 
   it('formats counts with separators', () => {

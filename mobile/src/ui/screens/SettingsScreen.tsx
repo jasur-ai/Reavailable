@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import type { UpdateState } from '../../app/useAppUpdate';
+import { installedVersion } from '../../platform/update/appUpdate';
 import type { Language } from '../../core/types';
 import { Button, Card, Field, Notice, Segmented } from '../components/common';
 import { colors, spacing, typography } from '../theme';
@@ -17,7 +19,9 @@ export interface SettingsScreenProps {
   onTest: (input: { apiBaseUrl: string; apiKey: string }) => Promise<string>;
   onLanguageChange: (language: Language) => Promise<void>;
   onVoiceToggle: (enabled: boolean) => Promise<void>;
-  onBack: () => void;
+  update: UpdateState;
+  onCheckUpdate: () => void;
+  onInstallUpdate: () => void;
 }
 
 type Feedback = { tone: 'success' | 'danger'; message: string } | null;
@@ -71,10 +75,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.topRow}>
-        <Button label={t('common.back')} variant="ghost" onPress={props.onBack} />
-      </View>
-      <Text style={typography.title}>{t('settings.title')}</Text>
+      <Text style={typography.display}>{t('settings.title')}</Text>
 
       <Card>
         <Text style={typography.heading}>{t('settings.languageHeading')}</Text>
@@ -151,6 +152,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
         <Text style={typography.small}>{t('settings.voiceHeadphones')}</Text>
       </Card>
 
+      <UpdateCard
+        state={props.update}
+        onCheck={props.onCheckUpdate}
+        onInstall={props.onInstallUpdate}
+      />
+
       <Card>
         <Text style={typography.heading}>{t('settings.storageHeading')}</Text>
         <Text style={typography.small}>{t('settings.storageBody')}</Text>
@@ -160,9 +167,76 @@ export function SettingsScreen(props: SettingsScreenProps) {
   );
 }
 
+function UpdateCard({
+  state,
+  onCheck,
+  onInstall,
+}: {
+  state: UpdateState;
+  onCheck: () => void;
+  onInstall: () => void;
+}) {
+  const t = useTranslate();
+  const current = installedVersion();
+  const versionLine = t('update.current', { version: current.versionName, code: String(current.versionCode) });
+
+  if (state.status === 'unsupported') {
+    return (
+      <Card>
+        <Text style={typography.heading}>{t('update.heading')}</Text>
+        <Text style={typography.small}>{t('update.onlyAndroid')}</Text>
+      </Card>
+    );
+  }
+
+  let message: string | null = null;
+  let tone: 'info' | 'danger' | 'success' = 'info';
+  if (state.status === 'upToDate') {
+    message = t('update.upToDate');
+    tone = 'success';
+  } else if (state.status === 'available' || state.status === 'downloading') {
+    message = t('update.available', { version: state.manifest.versionName });
+  } else if (state.status === 'noApk') {
+    message = t('update.noApk');
+    tone = 'danger';
+  } else if (state.status === 'failed') {
+    message = t('update.failed');
+    tone = 'danger';
+  }
+
+  const busy = state.status === 'checking' || state.status === 'downloading';
+  const offerInstall = state.status === 'available' || state.status === 'downloading' || state.status === 'noApk';
+
+  return (
+    <Card>
+      <Text style={typography.heading}>{t('update.heading')}</Text>
+      <Text style={typography.small}>{versionLine}</Text>
+      {message ? <Notice tone={tone}>{message}</Notice> : null}
+      {state.status === 'checking' ? <ActivityIndicator color={colors.primary} /> : null}
+      {offerInstall ? (
+        <>
+          <Text style={typography.small}>{t('update.installHint')}</Text>
+          <Button
+            label={state.status === 'downloading' ? t('update.downloading') : t('update.install')}
+            onPress={onInstall}
+            busy={state.status === 'downloading'}
+          />
+        </>
+      ) : (
+        <Button
+          label={t('update.check')}
+          variant="secondary"
+          onPress={onCheck}
+          busy={busy}
+          disabled={busy}
+        />
+      )}
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xl },
-  topRow: { flexDirection: 'row', justifyContent: 'flex-start' },
   flex: { flex: 1 },
   buttonRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   voiceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

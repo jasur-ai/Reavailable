@@ -9,10 +9,14 @@ import type { PlaybackSnapshot } from '../core/playback/playbackController';
 import type { BookRecord, ChunkRecord } from '../core/types';
 import type { VoiceSnapshot } from '../core/voice/voiceService';
 import type { Translate } from '../i18n';
+import { describeVoice } from '../core/voices';
 
 export type Tone = 'neutral' | 'info' | 'warning' | 'danger' | 'success';
 
-export const MAX_TRANSCRIPT_CHARS = 200_000;
+/** Longest text accepted in one go. Longer texts are split into several books of PART_MAX_CHARS. */
+export const MAX_TRANSCRIPT_CHARS = 1_000_000;
+/** Largest text one book may hold. Keeps each book well inside the server's per-book limits. */
+export const PART_MAX_CHARS = 150_000;
 export const MAX_TITLE_CHARS = 120;
 
 export function storedCount(book: BookRecord): number {
@@ -187,15 +191,18 @@ export function containsCyrillic(text: string): boolean {
   return /[\u0400-\u04FF]/.test(text);
 }
 
-/** Human readable name of a voice, when this app knows it. */
+/**
+ * Human readable name of a voice without any personal name: gender and language only, for example
+ * "Ayol ovozi · O'zbekcha". Unknown voices fall back to a generic label.
+ */
 export function voiceLabel(voice: string, t: Translate): string {
-  if (voice.includes('Madina')) {
-    return t('library.voiceMadina');
+  const info = describeVoice(voice);
+  if (!info) {
+    return t('voice.unknown');
   }
-  if (voice.includes('Sardor')) {
-    return t('library.voiceSardor');
-  }
-  return voice;
+  const gender = info.gender === 'female' ? t('voice.female') : t('voice.male');
+  const language = info.language === 'uz' ? t('voice.langUz') : t('voice.langEn');
+  return `${gender} · ${language}`;
 }
 
 export function formatCount(value: number): string {

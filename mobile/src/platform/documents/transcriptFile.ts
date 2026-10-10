@@ -53,6 +53,8 @@ export async function pickTranscriptFile(): Promise<PickedTranscript | null> {
     if (error instanceof DocumentTextError) {
       throw new TranscriptFileError(error.code, error.message);
     }
-    throw error;
+    // Anything else (for example a native file error) is still reported, with its own text as detail.
+    const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    throw new TranscriptFileError('unreadable', detail);
   }
 }

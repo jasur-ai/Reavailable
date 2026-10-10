@@ -3,6 +3,7 @@ import { Alert, FlatList, Image, RefreshControl, StyleSheet, Text, View } from '
 import type { BookRecord } from '../../core/types';
 import { bookStatusView, voiceLabel, type Tone } from '../presentation';
 import { Badge, Button, Card, Notice, ProgressBar } from '../components/common';
+import type { UpdateState } from '../../app/useAppUpdate';
 import { colors, radius, spacing, typography } from '../theme';
 import { useTranslate } from '../TranslateContext';
 
@@ -21,7 +22,8 @@ export interface LibraryScreenProps {
   onRefresh: () => void;
   onOpen: (book: BookRecord) => void;
   onAdd: () => void;
-  onSettings: () => void;
+  update: UpdateState;
+  onInstallUpdate: () => void;
   onRetry: (book: BookRecord) => void;
   onRemove: (book: BookRecord) => void;
 }
@@ -50,13 +52,11 @@ export function LibraryScreen(props: LibraryScreenProps) {
       refreshControl={<RefreshControl refreshing={props.refreshing} onRefresh={props.onRefresh} />}
       ListHeaderComponent={
         <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.brand}>
-              <Image source={require('../../../assets/brand/logo.png')} style={styles.logo} accessibilityLabel="Reavailable" />
-              <Text style={typography.display}>{t('library.title')}</Text>
-            </View>
-            <Button label={t('library.settings')} variant="ghost" onPress={props.onSettings} />
+          <View style={styles.brand}>
+            <Image source={require('../../../assets/brand/logo.png')} style={styles.logo} accessibilityLabel="Reavailable" />
+            <Text style={typography.display}>{t('library.title')}</Text>
           </View>
+          <UpdateBanner state={props.update} onInstall={props.onInstallUpdate} />
           {!serverConfigured ? <Notice tone="warning">{t('library.serverNeeded')}</Notice> : null}
           <Button
             label={t('library.addBook')}
@@ -83,6 +83,26 @@ export function LibraryScreen(props: LibraryScreenProps) {
       ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
       showsVerticalScrollIndicator={false}
     />
+  );
+}
+
+/** Shown only when a newer build is ready. Tapping it opens the system installer after the download. */
+function UpdateBanner({ state, onInstall }: { state: UpdateState; onInstall: () => void }) {
+  const t = useTranslate();
+  if (state.status !== 'available' && state.status !== 'downloading' && state.status !== 'noApk') {
+    return null;
+  }
+  const version = state.manifest.versionName;
+  return (
+    <Card style={styles.banner}>
+      <Text style={typography.heading}>{t('update.available', { version })}</Text>
+      {state.status === 'noApk' ? <Text style={typography.small}>{t('update.noApk')}</Text> : null}
+      <Button
+        label={state.status === 'downloading' ? t('update.downloading') : t('update.bannerAction')}
+        onPress={onInstall}
+        busy={state.status === 'downloading'}
+      />
+    </Card>
   );
 }
 
@@ -137,7 +157,7 @@ const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   header: { gap: spacing.md, marginBottom: spacing.xl },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  banner: { borderWidth: 1, borderColor: colors.primary },
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 },
   logo: { width: 44, height: 44, borderRadius: radius.sm },
   flex: { flex: 1 },

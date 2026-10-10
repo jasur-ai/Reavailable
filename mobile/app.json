@@ -2,7 +2,7 @@
   "expo": {
     "name": "Reavailable",
     "slug": "reavailable",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "reavailable",
@@ -12,7 +12,7 @@
     },
     "android": {
       "package": "uz.reavailable.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#1F6F5C",
         "foregroundImage": "./assets/adaptive-icon.png"
@@ -22,6 +22,9 @@
         "android.permission.VIBRATE",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "permissions": [
+        "android.permission.REQUEST_INSTALL_PACKAGES"
       ]
     },
     "plugins": [

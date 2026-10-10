@@ -242,7 +242,7 @@ export async function createAppServices(): Promise<AppServices> {
         lines.push(t('settings.providerWarning', { provider: config.provider }));
       }
       if (config.voices.length > 0) {
-        lines.push(t('settings.voicesLine', { voices: config.voices.join(', '), default: config.default_voice }));
+        lines.push(t('settings.voicesLine', { count: String(config.voices.length) }));
       }
       return lines.join(' ');
     },

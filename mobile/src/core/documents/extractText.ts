@@ -110,13 +110,39 @@ async function docxText(bytes: Uint8Array): Promise<string> {
   return docxParagraphsToText(await entry.async('string'));
 }
 
+/**
+ * Some JavaScript engines (Hermes on older React Native builds among them) lack newer built-ins
+ * that pdf.js uses at start-up. Adding the missing ones is harmless on engines that already have them.
+ */
+function ensurePdfRuntime(): void {
+  const constructor = Promise as unknown as { withResolvers?: () => unknown };
+  if (typeof constructor.withResolvers === 'function') {
+    return;
+  }
+  constructor.withResolvers = () => {
+    let resolve!: (value: unknown) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
+function errorDetail(error: unknown): string {
+  return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+}
+
 async function pdfText(bytes: Uint8Array): Promise<string> {
+  ensurePdfRuntime();
   // Loaded lazily so the rest of the app does not pay for the PDF engine at start-up.
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   // Hermes has no dynamic import of a computed worker path, so the worker is handed to pdf.js directly.
   // pdf.js checks globalThis.pdfjsWorker before it tries to load a worker file.
   const worker = await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
   (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = worker;
+
   let document: Awaited<ReturnType<typeof pdfjs.getDocument>['promise']>;
   try {
     document = await pdfjs.getDocument({
@@ -124,23 +150,37 @@ async function pdfText(bytes: Uint8Array): Promise<string> {
       isEvalSupported: false,
       disableFontFace: true,
       useSystemFonts: false,
+      useWorkerFetch: false,
+      verbosity: 0,
     }).promise;
-  } catch {
-    throw new DocumentTextError('unreadable', 'This PDF could not be opened. It may be damaged or password-protected.');
+  } catch (error) {
+    throw new DocumentTextError('unreadable', `The PDF could not be opened (${errorDetail(error)}).`);
   }
+
   const pages: string[] = [];
+  let failedPages = 0;
+  let lastFailure = '';
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-    const page = await document.getPage(pageNumber);
-    const content = await page.getTextContent();
-    let pageText = '';
-    for (const item of content.items) {
-      if (!('str' in item)) continue;
-      pageText += item.str;
-      pageText += item.hasEOL ? '\n' : ' ';
+    try {
+      const page = await document.getPage(pageNumber);
+      const content = await page.getTextContent();
+      let pageText = '';
+      for (const item of content.items) {
+        if (!('str' in item)) continue;
+        pageText += item.str;
+        pageText += item.hasEOL ? '\n' : ' ';
+      }
+      pages.push(pageText);
+      page.cleanup();
+    } catch (error) {
+      failedPages += 1;
+      lastFailure = errorDetail(error);
     }
-    pages.push(pageText);
-    page.cleanup();
   }
   await document.destroy();
+
+  if (document.numPages > 0 && failedPages === document.numPages) {
+    throw new DocumentTextError('unreadable', `No page of the PDF could be read (${lastFailure}).`);
+  }
   return pages.join('\n\n');
 }

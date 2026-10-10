@@ -33,6 +33,8 @@ export interface VoiceSnapshot {
   status: VoiceStatus;
   message: string | null;
   lastCommand: VoiceCommand | null;
+  /** Epoch milliseconds of the last accepted command, so the UI can flash each one. */
+  lastCommandAt: number | null;
 }
 
 const DEFAULT_OPTIONS: VoiceServiceOptions = {
@@ -43,7 +45,7 @@ const DEFAULT_OPTIONS: VoiceServiceOptions = {
 
 export class VoiceCommandService {
   private readonly options: VoiceServiceOptions;
-  private snapshot: VoiceSnapshot = { status: 'off', message: null, lastCommand: null };
+  private snapshot: VoiceSnapshot = { status: 'off', message: null, lastCommand: null, lastCommandAt: null };
   private wanted = false;
   private lastAcceptedAt = Number.NEGATIVE_INFINITY;
   private readonly listeners = new Set<() => void>();
@@ -134,7 +136,7 @@ export class VoiceCommandService {
       return null;
     }
     this.lastAcceptedAt = now;
-    this.set({ lastCommand: command });
+    this.set({ lastCommand: command, lastCommandAt: now });
     this.dispatch(command);
     return command;
   }
