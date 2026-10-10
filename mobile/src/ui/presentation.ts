@@ -1,11 +1,14 @@
 /**
  * Pure presentation logic: turns core state into user-facing text and tones.
- * Kept free of React Native imports so it can be unit-tested under Node.
+ * Kept free of React Native imports so it can be unit-tested under Node, and free of language
+ * choices: every function takes a translator for the current interface language.
  */
 
+import { describeError } from '../core/messages';
 import type { PlaybackSnapshot } from '../core/playback/playbackController';
 import type { BookRecord, ChunkRecord } from '../core/types';
 import type { VoiceSnapshot } from '../core/voice/voiceService';
+import type { Translate } from '../i18n';
 
 export type Tone = 'neutral' | 'info' | 'warning' | 'danger' | 'success';
 
@@ -29,24 +32,24 @@ export interface BookStatusView {
   canRetry: boolean;
 }
 
-export function bookStatusView(book: BookRecord): BookStatusView {
+export function bookStatusView(book: BookRecord, t: Translate): BookStatusView {
   const stored = storedCount(book);
   const total = totalParts(book);
-  const partsLine = total > 0 ? `${stored} of ${total} parts on this phone.` : '';
+  const partsLine = total > 0 ? t('status.partsOnPhone', { stored, total }) : '';
 
   switch (book.status) {
     case 'processing':
       return {
-        label: 'Preparing on server',
+        label: t('status.processing'),
         tone: 'info',
-        detail: 'The server is generating the audio. It will download here when it is ready.',
+        detail: t('status.processingDetail'),
         progress: null,
         canOpen: false,
         canRetry: false,
       };
     case 'downloading':
       return {
-        label: 'Downloading',
+        label: t('status.downloading'),
         tone: 'info',
         detail: [partsLine, book.syncNote].filter(Boolean).join(' '),
         progress: { value: stored, total },
@@ -57,20 +60,18 @@ export function bookStatusView(book: BookRecord): BookStatusView {
       const allAcknowledged = book.chunks.every((chunk) => chunk.acked);
       if (allAcknowledged || book.serverReleased) {
         return {
-          label: 'Ready offline',
+          label: t('status.readyOffline'),
           tone: 'success',
-          detail: book.serverGone
-            ? `All ${total} parts are on this phone. The server copy had already expired.`
-            : `All ${total} parts are on this phone and do not need a connection.`,
+          detail: book.serverGone ? t('status.readyExpired', { total }) : t('status.readyAllParts', { total }),
           progress: { value: stored, total },
           canOpen: true,
           canRetry: false,
         };
       }
       return {
-        label: 'Ready, finishing sync',
+        label: t('status.readyFinishing'),
         tone: 'info',
-        detail: book.syncNote ?? 'Finishing the sync with the server. Audio plays normally meanwhile.',
+        detail: book.syncNote ?? t('status.readyFinishingDetail'),
         progress: { value: stored, total },
         canOpen: true,
         canRetry: false,
@@ -78,9 +79,13 @@ export function bookStatusView(book: BookRecord): BookStatusView {
     }
     case 'failed':
       return {
-        label: 'Failed',
+        label: t('status.failed'),
         tone: 'danger',
-        detail: book.errorMessage ?? 'Something went wrong. Try again.',
+        // A known code is translated here, so switching the language refreshes the wording. The
+        // server's own message is used only for a code this app does not know.
+        detail: book.errorCode
+          ? describeError(book.errorCode, t, book.errorMessage)
+          : book.errorMessage ?? t('status.failedDetail'),
         progress: total > 0 ? { value: stored, total } : null,
         canOpen: stored > 0,
         canRetry: !book.serverGone && book.errorCode !== 'file_missing',
@@ -88,59 +93,62 @@ export function bookStatusView(book: BookRecord): BookStatusView {
   }
 }
 
-export function partStatus(chunk: ChunkRecord | undefined): { label: string; tone: Tone } {
+export function partStatus(chunk: ChunkRecord | undefined, t: Translate): { label: string; tone: Tone } {
   if (!chunk) {
-    return { label: 'Waiting', tone: 'neutral' };
+    return { label: t('part.waiting'), tone: 'neutral' };
   }
   switch (chunk.state) {
     case 'stored':
-      return chunk.acked ? { label: 'On phone', tone: 'success' } : { label: 'On phone, syncing', tone: 'info' };
+      return chunk.acked
+        ? { label: t('part.stored'), tone: 'success' }
+        : { label: t('part.storedSyncing'), tone: 'info' };
     case 'downloading':
-      return { label: 'Downloading', tone: 'info' };
+      return { label: t('part.downloading'), tone: 'info' };
     case 'failed':
-      return { label: chunk.lastError === 'file_missing' ? 'Lost' : 'Retrying', tone: 'danger' };
+      return { label: chunk.lastError === 'file_missing' ? t('part.lost') : t('part.retrying'), tone: 'danger' };
     case 'pending':
-      return { label: 'Waiting', tone: 'neutral' };
+      return { label: t('part.waiting'), tone: 'neutral' };
   }
 }
 
-export function playbackMessage(snapshot: PlaybackSnapshot): string {
+export function playbackMessage(snapshot: PlaybackSnapshot, t: Translate): string {
   const part = snapshot.index + 1;
   const total = snapshot.totalChunks;
   switch (snapshot.status) {
     case 'idle':
-      return 'Choose a book in the library to start listening.';
+      return t('playback.idle');
     case 'playing':
-      return `Playing part ${part} of ${total}.`;
+      return t('playback.playing', { index: part, total });
     case 'paused':
-      return `Paused at part ${part} of ${total}.`;
+      return t('playback.paused', { index: part, total });
     case 'finished':
-      return 'Finished. Press Play or say "repeat" to listen again.';
+      return t('playback.finished');
     case 'waiting':
       if (snapshot.waitingReason === 'processing') {
-        return 'The server is still preparing this book. Playback starts when the first part is on this phone.';
+        return t('playback.waitingProcessing');
       }
       if (snapshot.waitingReason === 'missing') {
-        return `Part ${part} could not be downloaded. Press Next to skip it, or retry from the library.`;
+        return t('playback.waitingMissing', { index: part });
       }
-      return `Part ${part} is still downloading. Playback starts automatically.`;
+      return t('playback.waitingDownload', { index: part });
     case 'error':
-      return snapshot.error ?? 'Playback failed. Try again.';
+      return snapshot.error ?? t('playback.error');
   }
 }
 
-export function voiceMessage(snapshot: VoiceSnapshot): string {
+export function voiceMessage(snapshot: VoiceSnapshot, t: Translate): string {
   switch (snapshot.status) {
     case 'off':
-      return 'Voice commands are off. Turn them on in Settings.';
+      return t('voice.off');
     case 'starting':
-      return 'Starting voice commands…';
+      return t('voice.starting');
     case 'listening':
-      return 'Listening. Say "next", "repeat", "pause" or "resume".';
+      return t('voice.listening');
     case 'unavailable':
-      return snapshot.message ?? 'Voice commands are not available in this build.';
+      // The snapshot message is an internal build detail; the catalogue wording is what a user needs.
+      return t('voice.unavailableBuild');
     case 'error':
-      return snapshot.message ? `Voice commands stopped: ${snapshot.message}` : 'Voice commands stopped.';
+      return snapshot.message ? t('voice.stoppedWith', { message: snapshot.message }) : t('voice.stopped');
   }
 }
 
@@ -154,19 +162,19 @@ export interface NewBookErrors {
   transcript?: string;
 }
 
-export function validateNewBook(input: NewBookInput): NewBookErrors {
+export function validateNewBook(input: NewBookInput, t: Translate): NewBookErrors {
   const errors: NewBookErrors = {};
   const title = input.title.trim();
   if (title.length === 0) {
-    errors.title = 'Enter a title.';
+    errors.title = t('errors.titleRequired');
   } else if (title.length > MAX_TITLE_CHARS) {
-    errors.title = `Keep the title under ${MAX_TITLE_CHARS} characters.`;
+    errors.title = t('errors.titleTooLong', { max: MAX_TITLE_CHARS });
   }
   const transcript = input.transcript.trim();
   if (transcript.length === 0) {
-    errors.transcript = 'Paste the text or load a file.';
+    errors.transcript = t('errors.transcriptRequired');
   } else if (transcript.length > MAX_TRANSCRIPT_CHARS) {
-    errors.transcript = `The text is too long. The limit is ${MAX_TRANSCRIPT_CHARS.toLocaleString('en-US')} characters.`;
+    errors.transcript = t('errors.transcriptTooLong', { max: formatCount(MAX_TRANSCRIPT_CHARS) });
   }
   return errors;
 }
@@ -177,6 +185,17 @@ export function validateNewBook(input: NewBookInput): NewBookErrors {
  */
 export function containsCyrillic(text: string): boolean {
   return /[\u0400-\u04FF]/.test(text);
+}
+
+/** Human readable name of a voice, when this app knows it. */
+export function voiceLabel(voice: string, t: Translate): string {
+  if (voice.includes('Madina')) {
+    return t('library.voiceMadina');
+  }
+  if (voice.includes('Sardor')) {
+    return t('library.voiceSardor');
+  }
+  return voice;
 }
 
 export function formatCount(value: number): string {

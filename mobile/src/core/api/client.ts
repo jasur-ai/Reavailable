@@ -109,6 +109,21 @@ export interface CreateJobInput {
   voice?: string;
 }
 
+/** What a server reports about itself on GET /api/v1/config. The Worker backend serves it. */
+export interface ServerConfigDto {
+  status: string;
+  version: string;
+  provider: string;
+  voices: string[];
+  default_voice: string;
+  requires_api_key: boolean;
+  /** True when the server accepted the access key sent with this request. */
+  api_key_ok: boolean;
+  max_transcript_chars: number;
+  sentences_per_chunk_options: number[];
+  job_ttl_hours: number;
+}
+
 export interface ApiClientOptions {
   baseUrl: string;
   apiKey?: string;
@@ -162,6 +177,20 @@ export class ApiClient {
     return this.exchange('GET', '/health', {}, readJson<{ status: string; version: string }>());
   }
 
+  /**
+   * Reads the server configuration: provider, voices, and whether the access key was accepted.
+   * A backend without this endpoint answers 404, which callers treat as "older server".
+   */
+  config(): Promise<ServerConfigDto> {
+    // The key travels with this request so the server can tell the app whether it was accepted.
+    return this.exchange('GET', '/config', { headers: this.keyHeaders() }, readJson<unknown>()).then(parseServerConfig);
+  }
+
+  /** The access key header, when one is configured. */
+  private keyHeaders(): Record<string, string> {
+    return this.apiKey ? { 'X-API-Key': this.apiKey } : {};
+  }
+
   createJob(input: CreateJobInput): Promise<JobCreatedDto> {
     const body: Record<string, unknown> = {
       title: input.title,
@@ -171,8 +200,7 @@ export class ApiClient {
     if (input.voice) {
       body.voice = input.voice;
     }
-    const headers: Record<string, string> = this.apiKey ? { 'X-API-Key': this.apiKey } : {};
-    return this.exchange('POST', '/jobs', { body, headers }, readJson<unknown>()).then(parseJobCreated);
+    return this.exchange('POST', '/jobs', { body, headers: this.keyHeaders() }, readJson<unknown>()).then(parseJobCreated);
   }
 
   getJob(jobId: string, token: string): Promise<JobStatusDto> {
@@ -270,6 +298,35 @@ function readJson<T>(): BodyReader<T> {
     } catch {
       throw new ApiError(response.status, 'invalid_response', 'The server returned an unexpected response.');
     }
+  };
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function numberList(value: unknown): number[] {
+  return Array.isArray(value) ? value.filter((item): item is number => typeof item === 'number') : [];
+}
+
+/** Accepts a configuration with missing fields instead of failing: the caller decides what matters. */
+function parseServerConfig(value: unknown): ServerConfigDto {
+  if (!isRecord(value) || typeof value.status !== 'string') {
+    throw invalid('configuration');
+  }
+  const voices = stringList(value.voices);
+  const options = numberList(value.sentences_per_chunk_options);
+  return {
+    status: value.status,
+    version: typeof value.version === 'string' ? value.version : 'unknown',
+    provider: typeof value.provider === 'string' ? value.provider : 'unknown',
+    voices,
+    default_voice: typeof value.default_voice === 'string' ? value.default_voice : (voices[0] ?? ''),
+    requires_api_key: value.requires_api_key === true,
+    api_key_ok: value.api_key_ok === true,
+    max_transcript_chars: typeof value.max_transcript_chars === 'number' ? value.max_transcript_chars : 0,
+    sentences_per_chunk_options: options.length > 0 ? options : [1, 2],
+    job_ttl_hours: typeof value.job_ttl_hours === 'number' ? value.job_ttl_hours : 0,
   };
 }
 

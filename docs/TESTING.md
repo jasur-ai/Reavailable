@@ -11,8 +11,12 @@ what has not. Read the "Not verified" section before relying on the product for 
 | Backend lint and types | `.venv/bin/ruff check app tests && .venv/bin/ruff format --check app tests && .venv/bin/mypy` | Style, formatting, strict typing of `app` | clean |
 | Mobile type check | `cd mobile && npx tsc --noEmit` | Strict TypeScript for `src`, `tests`, `App.tsx`, `index.ts` | exit 0 |
 | Mobile lint | `npx eslint .` | Expo rules, `no-console` for app code | clean, no warnings |
-| Mobile unit tests | `npm test` | Core logic: API client, library, sync engine, playback, voice | 8 suites, 200 tests; coverage thresholds 85% met |
-| Mobile end-to-end | `E2E_API_BASE_URL=http://127.0.0.1:8000 npm run test:e2e` (backend running) | Real HTTP against the backend with the fake speech provider | 5 passed |
+| Mobile unit tests | `npm test` | Core logic: API client, library, sync engine, playback, voice, string catalogue, presentation | 8 suites, 220 tests; coverage thresholds 85% met (96% statements) |
+| Mobile end-to-end (Python backend) | `E2E_API_BASE_URL=http://127.0.0.1:8000 npm run test:e2e` (backend running) | Real HTTP against the backend with the fake speech provider | 5 passed |
+| Worker tests | `cd worker && npm test` | Chunking (golden fixture), service state machine, D1 store, R2 audio, HTTP contract, TTS mapping, config, security. Runs inside workerd against a real local D1 and R2 | 6 suites, 117 passed |
+| Worker type check | `cd worker && npm run typecheck` | Strict TypeScript for `src` and `tests` | exit 0 |
+| Worker bundle | `cd worker && npx wrangler deploy --dry-run --outdir /tmp/dist` | The Worker compiles and bundles for the platform | 51.09 KiB, 14.38 KiB gzipped |
+| Mobile end-to-end (Worker) | `E2E_API_BASE_URL=http://127.0.0.1:8787 npm run test:e2e` (`wrangler dev` running) | The same contract suite against the Worker, including `GET /config` | 5 passed |
 | Model script | `VOSK_MODEL_URL=file://<archive> scripts/fetch-vosk-model.sh` | Archive validation, checksum option, install, skip, missing URL | 6 cases checked (see §2) |
 | All mobile checks | `npm run check` | Type check, lint and unit tests | passes |
 
@@ -52,7 +56,13 @@ server.
   parts still downloading, load failures and state changes.
 - `voiceCommands.test.ts` and `voiceService.test.ts`: the closed grammar, parsing, confidence threshold,
   cooldown, lifecycle, restarts, and unavailability when the native module is missing.
-- `utils.test.ts`: hex encoding, file naming, user-facing messages, presentation rules, validation.
+- `utils.test.ts`: hex encoding, file naming, presentation rules, validation, error wording, and the string
+  catalogue (both languages present and non-empty for every key, matching `{placeholders}`, translator
+  parameter filling, language detection).
+- Language handling is also covered where it is used: `library.test.ts` (the language is stored, restored and
+  falls back to Uzbek), `syncEngine.test.ts` (notes are written in Uzbek by default and follow a switch to
+  English during a download; without a translator they stay English), and `apiClient.test.ts` (`GET /config`
+  parsing, defaults for missing fields, the API key header, and a `404` for a server without the endpoint).
 
 The unit tests use in-memory fakes in `tests/unit/support/`: `FakeServer` implements the same contract as the
 real API client, `FakePlayer` and `FakeRecognizer` replace the native modules, and `memory.ts` replaces the
@@ -61,9 +71,11 @@ why the end-to-end suite exists.
 
 ### What the end-to-end suite covers
 
-Against a running backend with the fake speech provider:
+Against a running backend with the fake speech provider. The suite runs against both implementations: the
+Python service and the Cloudflare Worker (CI has a job for each).
 
-1. The health endpoint answers.
+1. The health endpoint answers, and `GET /api/v1/config` is read when the server has it (the Worker does; a
+   `404` from the Python backend is accepted).
 2. A book is created, its parts are downloaded and verified, every part is acknowledged, the server copy
    is removed, and the book plays from the device files. After an offline restart the sync makes no server
    calls.
@@ -93,6 +105,18 @@ Against a running backend with the fake speech provider:
   existing model is kept), the right checksum, a bad archive (the existing model is kept), a skip when a model
   exists, and a missing file (curl exit 37, nothing left behind).
 
+- **The Cloudflare Worker was run locally** with `wrangler dev` (fake provider) and taken through the whole
+  contract by hand: `GET /api/v1/health`, `GET /api/v1/config`, `POST /api/v1/jobs` (`202` with a token),
+  status polling until `ready` with 2 of 2 parts, `GET .../manifest` (sizes and SHA-256 for both parts), and
+  `GET .../chunks/0` and `/chunks/1`. Both downloads matched the manifest checksum and the `X-Content-SHA256`
+  header byte for byte, and both started with the `RIFF` magic of the WAV the fake provider emits. Synthesis
+  ran in a background pass scheduled with `ctx.waitUntil`, and the local D1 and R2 stores were the real
+  implementations in `workerd`.
+- The mobile end-to-end suite passed 5 of 5 against that running Worker, and again after the interface
+  languages were added.
+- `npm ci` in `worker/` resolves from `package-lock.json` without extra flags.
+- Both new and changed workflow files parse as YAML, and every `run:` block in them passes `bash -n`
+  (47 blocks).
 - The npm audit findings are not in the Android JS bundle. `expo export --platform android --no-bytecode`
   produced one bundle with none of `node-forge`, `braces`, `micromatch`, `sprintf`, `argparse`, `js-yaml` or
   `xcode`. The string `uuid` appears only as Expo's own module.
@@ -130,6 +154,9 @@ These were **not** tested in the sandbox. Do not report them as working.
 | iOS build | Needs a Mac with Xcode and an Apple developer account for signing | `npm run ios` on a Mac |
 | Vosk model checksum | The CI runner downloads the model, but the checksum is not pinned, so the download is not checked against a known value | Record the archive SHA-256 from the official release and set `VOSK_MODEL_SHA256` |
 | Hosted backend (HTTPS, persistent volume, rate limit) | No hosting account and no public address from the sandbox | Deploy `backend/Dockerfile`, check `https://<host>/api/v1/health`, then run §4 against it |
+| Deploying the Worker to a real Cloudflare account | `api.cloudflare.com` is not reachable from the sandbox, so `wrangler deploy` could only run as `--dry-run` | Run the `Deploy speech server (Cloudflare Workers)` workflow; it verifies `/health` and `/config` on the live address |
+| Live Azure speech from the Worker | No network access to `*.tts.speech.microsoft.com` and no key in the sandbox | Deploy with a real `AZURE_SPEECH_KEY`, then add a book and listen (manual checklist §4, step 3) |
+| The Uzbek and English wording as rendered on a device | The catalogue and the presentation rules are unit-tested, but no screen was rendered | Manual checklist §4: switch the language in Settings and read every screen |
 | Release signing | The APK uses the debug keystore, which is fine for testing only | Create a release keystore and configure signing before wider distribution |
 | File picker (`transcriptFile.ts`) | Native picker, not unit-tested | Manual checklist, §4, step 4 |
 | Restore from OS backups | Needs devices and a backup | Manual, if the backup policy is kept |
@@ -159,6 +186,11 @@ Record the results in the pull request.
    the phone downloads it. Check the message shown and that already-stored parts still play.
 9. **Airplane mode.** Put the phone in airplane mode after the download. The book must play and every command
    must still work, with no server contact.
+10. **Languages.** In **Settings**, switch the interface language to English and back to Uzbek. Check every
+    screen: the library list, a book's status line and progress, the player (status, part list, voice card),
+    the add-book form including its validation messages, and Settings itself. Kill the app and reopen it: the
+    choice must survive. Add a book that fails (for example stop the server) and check that the failure text
+    follows the current language.
 
 ## 5. Reproducing the run
 
@@ -175,8 +207,20 @@ cd ../mobile
 npm ci
 npm run check
 
-# End-to-end (new terminal, backend running on port 8000 with AUDIOBOOK_TTS_PROVIDER=fake)
+# End-to-end against the Python backend
+# (new terminal: backend running on port 8000 with AUDIOBOOK_TTS_PROVIDER=fake)
 cd mobile && E2E_API_BASE_URL=http://127.0.0.1:8000 npm run test:e2e
+
+# Worker
+cd ../worker
+npm ci
+npm run typecheck && npm test
+npx wrangler d1 migrations apply reavailable-audiobooks --local
+npx wrangler deploy --dry-run --outdir /tmp/worker-dist
+
+# End-to-end against the Worker
+# (new terminal: wrangler dev on port 8787 with the fake provider, see worker/README.md)
+cd ../mobile && E2E_API_BASE_URL=http://127.0.0.1:8787 npm run test:e2e
 ```
 
 Use a separate `AUDIOBOOK_DATA_DIR` for the end-to-end backend, so that test data does not mix with development

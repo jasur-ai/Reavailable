@@ -12,6 +12,7 @@ import {
   type Tone,
 } from '../presentation';
 import { colors, radius, spacing, TOUCH_TARGET, typography } from '../theme';
+import { useTranslate } from '../TranslateContext';
 
 export interface PlayerScreenProps {
   book: BookRecord | undefined;
@@ -28,11 +29,12 @@ export interface PlayerScreenProps {
 
 export function PlayerScreen(props: PlayerScreenProps) {
   const { book, playback } = props;
+  const t = useTranslate();
   if (!book) {
     return (
       <View style={styles.center}>
-        <Text style={typography.heading}>This book is no longer on this phone.</Text>
-        <Button label="Back to library" onPress={props.onBack} />
+        <Text style={typography.heading}>{t('player.bookMissing')}</Text>
+        <Button label={t('player.backToLibrary')} onPress={props.onBack} />
       </View>
     );
   }
@@ -40,8 +42,9 @@ export function PlayerScreen(props: PlayerScreenProps) {
   const total = totalParts(book);
   const stored = storedCount(book);
   const isPlaying = playback.status === 'playing';
-  const playPauseLabel = isPlaying ? 'Pause' : 'Play';
+  const playPauseLabel = isPlaying ? t('player.pause') : t('player.play');
   const currentChunk = book.chunks.find((chunk) => chunk.index === playback.index);
+  const currentStatus = partStatus(currentChunk, t);
   const canRetry = book.status === 'failed' && !book.serverGone;
 
   return (
@@ -53,78 +56,76 @@ export function PlayerScreen(props: PlayerScreenProps) {
       ListHeaderComponent={
         <View style={styles.header}>
           <View style={styles.topRow}>
-            <Button label="Library" variant="ghost" onPress={props.onBack} />
+            <Button label={t('library.title')} variant="ghost" onPress={props.onBack} />
           </View>
           <Text style={typography.title} numberOfLines={2}>
             {book.title}
           </Text>
           <Text style={typography.small}>
-            Part {Math.min(playback.index + 1, Math.max(total, 1))} of {total} · {stored} on this phone
+            {t('player.position', { index: Math.min(playback.index + 1, Math.max(total, 1)), total, stored })}
           </Text>
-          <ProgressBar value={stored} total={total} label="Parts on this phone" />
+          <ProgressBar value={stored} total={total} label={t('player.progressLabel')} />
 
           <Card>
             <Text style={[typography.body, styles.status]} accessibilityLiveRegion="polite">
-              {playbackMessage(playback)}
+              {playbackMessage(playback, t)}
             </Text>
             {playback.status === 'error' || (book.status === 'failed' && playback.status !== 'waiting') ? (
-              <Notice tone="danger">{book.errorMessage ?? playback.error ?? 'Playback needs attention.'}</Notice>
+              <Notice tone="danger">{book.errorMessage ?? playback.error ?? t('player.attention')}</Notice>
             ) : null}
             {currentChunk && currentChunk.state !== 'stored' && playback.status === 'waiting' ? (
-              <Badge label={partStatus(currentChunk).label} tone={partStatus(currentChunk).tone} />
+              <Badge label={currentStatus.label} tone={currentStatus.tone} />
             ) : null}
             <View style={styles.controls}>
               <Button
-                label="Repeat"
+                label={t('player.repeat')}
                 variant="secondary"
                 onPress={props.onRepeat}
                 disabled={playback.status === 'idle' || playback.status === 'waiting'}
-                accessibilityHint="Plays the current part again from the beginning"
+                accessibilityHint={t('player.repeatHint')}
                 style={styles.control}
               />
               <Button
                 label={playPauseLabel}
                 onPress={props.onPlayPause}
                 disabled={playback.status === 'idle'}
-                accessibilityHint={isPlaying ? 'Pauses playback' : 'Starts or resumes playback'}
+                accessibilityHint={isPlaying ? t('player.pauseHint') : t('player.playHint')}
                 style={styles.control}
               />
               <Button
-                label="Next"
+                label={t('player.next')}
                 variant="secondary"
                 onPress={props.onNext}
                 disabled={playback.status === 'idle'}
-                accessibilityHint="Moves to the next part"
+                accessibilityHint={t('player.nextHint')}
                 style={styles.control}
               />
             </View>
-            {canRetry ? <Button label="Retry download" variant="secondary" onPress={props.onRetry} /> : null}
+            {canRetry ? <Button label={t('player.retryDownload')} variant="secondary" onPress={props.onRetry} /> : null}
           </Card>
 
           <Card>
             <View style={styles.voiceRow}>
-              <Text style={[typography.heading, styles.flex]}>Voice commands</Text>
+              <Text style={[typography.heading, styles.flex]}>{t('player.voiceTitle')}</Text>
               <Badge
-                label={props.voiceEnabled ? 'On' : 'Off'}
+                label={props.voiceEnabled ? t('common.on') : t('common.off')}
                 tone={props.voiceEnabled ? 'success' : 'neutral'}
               />
             </View>
             <Text style={typography.small} accessibilityLiveRegion="polite">
-              {voiceMessage(props.voice)}
+              {voiceMessage(props.voice, t)}
             </Text>
             {props.voice.lastCommand ? (
-              <Text style={typography.small}>Last command: {props.voice.lastCommand}</Text>
+              <Text style={typography.small}>{t('player.lastCommand', { command: props.voice.lastCommand })}</Text>
             ) : null}
-            <Text style={typography.small}>
-              Works offline. Use headphones, or keep the phone close, so the speaker does not trigger commands.
-            </Text>
+            <Text style={typography.small}>{t('player.voiceOfflineHint')}</Text>
           </Card>
 
-          <Text style={styles.sectionTitle}>Parts</Text>
+          <Text style={styles.sectionTitle}>{t('player.parts')}</Text>
         </View>
       }
       renderItem={({ item }) => {
-        const status = partStatus(item);
+        const status = partStatus(item, t);
         const selected = item.index === playback.index;
         return (
           <PartRow
@@ -136,11 +137,7 @@ export function PlayerScreen(props: PlayerScreenProps) {
           />
         );
       }}
-      ListEmptyComponent={
-        <Text style={typography.small}>
-          Parts appear here when the server has finished preparing the book.
-        </Text>
-      }
+      ListEmptyComponent={<Text style={typography.small}>{t('player.partsEmpty')}</Text>}
     />
   );
 }
@@ -158,15 +155,17 @@ function PartRow({
   selected: boolean;
   onPress: () => void;
 }) {
+  const t = useTranslate();
+  const number = index + 1;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Part ${index + 1}, ${label}`}
+      accessibilityLabel={t('player.partA11y', { index: number, label })}
       accessibilityState={{ selected }}
       onPress={onPress}
       style={({ pressed }) => [styles.partRow, selected ? styles.partRowSelected : null, pressed ? styles.pressed : null]}
     >
-      <Text style={[typography.body, styles.flex]}>Part {index + 1}</Text>
+      <Text style={[typography.body, styles.flex]}>{t('player.partLabel', { index: number })}</Text>
       <Badge label={label} tone={tone} />
     </Pressable>
   );

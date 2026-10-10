@@ -5,12 +5,14 @@
  * Writes are persisted in order, and `flush()` resolves once everything so far is on disk.
  */
 
+import { DEFAULT_LANGUAGE, isLanguage, type Language } from '../../i18n';
+import { DEFAULT_SERVER_URL } from '../config';
 import type { AppSettings, BookRecord, ChunkRecord, LibraryData } from '../types';
 import type { LibraryPersistence } from './ports';
 
 export const EMPTY_LIBRARY: LibraryData = {
   version: 1,
-  settings: { apiBaseUrl: null },
+  settings: { apiBaseUrl: DEFAULT_SERVER_URL || null, language: DEFAULT_LANGUAGE },
   books: [],
 };
 
@@ -24,7 +26,11 @@ export function normalizeLibraryData(raw: unknown): LibraryData {
   }
   const candidate = raw as Partial<LibraryData>;
   const settings: AppSettings = {
-    apiBaseUrl: typeof candidate.settings?.apiBaseUrl === 'string' ? candidate.settings.apiBaseUrl : null,
+    apiBaseUrl:
+      typeof candidate.settings?.apiBaseUrl === 'string' && candidate.settings.apiBaseUrl
+        ? candidate.settings.apiBaseUrl
+        : DEFAULT_SERVER_URL || null,
+    language: isLanguage(candidate.settings?.language) ? candidate.settings.language : DEFAULT_LANGUAGE,
   };
   const books = Array.isArray(candidate.books) ? candidate.books.filter(isValidBook) : [];
   return { version: 1, settings, books };
@@ -99,6 +105,14 @@ export class Library {
 
   setApiBaseUrl(url: string | null): void {
     this.data = { ...this.data, settings: { ...this.data.settings, apiBaseUrl: url } };
+    this.commit();
+  }
+
+  setLanguage(language: Language): void {
+    if (this.data.settings.language === language) {
+      return;
+    }
+    this.data = { ...this.data, settings: { ...this.data.settings, language } };
     this.commit();
   }
 

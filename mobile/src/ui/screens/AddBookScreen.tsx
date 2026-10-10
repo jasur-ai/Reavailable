@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { describeError } from '../../core/messages';
 import { pickTranscriptFile, TranscriptFileError } from '../../platform/documents/transcriptFile';
 import { Button, Card, Field, Notice, Segmented } from '../components/common';
 import {
@@ -11,6 +12,7 @@ import {
   type NewBookErrors,
 } from '../presentation';
 import { colors, spacing, typography } from '../theme';
+import { useTranslate } from '../TranslateContext';
 
 export interface AddBookScreenProps {
   onSubmit: (input: { title: string; transcript: string; sentencesPerChunk: 1 | 2 }) => Promise<void>;
@@ -18,6 +20,7 @@ export interface AddBookScreenProps {
 }
 
 export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
+  const t = useTranslate();
   const [title, setTitle] = useState('');
   const [transcript, setTranscript] = useState('');
   const [sentencesPerChunk, setSentencesPerChunk] = useState<1 | 2>(2);
@@ -41,7 +44,11 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
         }
       }
     } catch (error) {
-      setFileError(error instanceof TranscriptFileError ? error.message : 'The file could not be read.');
+      setFileError(
+        error instanceof TranscriptFileError
+          ? describeError(error.code, t, error.message)
+          : t('addBook.fileError'),
+      );
     } finally {
       setLoadingFile(false);
     }
@@ -49,7 +56,7 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
 
   const submit = async () => {
     setSubmitError(null);
-    const validation = validateNewBook({ title, transcript });
+    const validation = validateNewBook({ title, transcript }, t);
     setErrors(validation);
     if (validation.title || validation.transcript) {
       return;
@@ -58,7 +65,7 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
     try {
       await onSubmit({ title: title.trim(), transcript: transcript.trim(), sentencesPerChunk });
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'The book could not be created.');
+      setSubmitError(error instanceof Error ? error.message : t('addBook.submitError'));
     } finally {
       setSubmitting(false);
     }
@@ -66,63 +73,56 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={typography.title}>Add a book</Text>
+      <Text style={typography.title}>{t('addBook.title')}</Text>
 
-      <Notice tone="info">
-        Paste Uzbek text (Latin script works best) or load a .txt or .md file. The text is sent to the server only to
-        create audio. The server deletes its copy as soon as this phone has downloaded and confirmed every part.
-      </Notice>
+      <Notice tone="info">{t('addBook.notice')}</Notice>
 
       <Card>
         <Field
-          label="Title"
+          label={t('addBook.titleLabel')}
           value={title}
           onChangeText={setTitle}
           error={errors.title}
           maxLength={MAX_TITLE_CHARS}
-          placeholder="For example: Chapter 1"
+          placeholder={t('addBook.titlePlaceholder')}
           autoCapitalize="sentences"
         />
         <Field
-          label="Text"
+          label={t('addBook.textLabel')}
           value={transcript}
           onChangeText={setTranscript}
           error={errors.transcript}
           multiline
           minHeight={220}
-          placeholder="Paste the text here"
+          placeholder={t('addBook.textPlaceholder')}
           autoCapitalize="sentences"
           autoCorrect={false}
-          hint={`${formatCount(transcript.length)} / ${formatCount(MAX_TRANSCRIPT_CHARS)} characters`}
+          hint={t('addBook.charCount', {
+            count: formatCount(transcript.length),
+            max: formatCount(MAX_TRANSCRIPT_CHARS),
+          })}
         />
-        {cyrillic ? (
-          <Notice tone="warning">
-            This text contains Cyrillic letters. The Uzbek voices are set up for Latin script, so some words may be
-            pronounced incorrectly.
-          </Notice>
-        ) : null}
+        {cyrillic ? <Notice tone="warning">{t('addBook.cyrillicWarning')}</Notice> : null}
         <Button
-          label="Load a .txt or .md file"
+          label={t('addBook.loadFile')}
           variant="secondary"
           onPress={loadFile}
           busy={loadingFile}
-          accessibilityHint="Opens the file picker"
+          accessibilityHint={t('addBook.loadFileHint')}
         />
         {fileError ? <Text style={styles.error}>{fileError}</Text> : null}
       </Card>
 
       <Card>
-        <Text style={typography.heading}>Part length</Text>
-        <Text style={typography.small}>
-          Each part is one or two sentences. Shorter parts start sooner; longer parts feel more natural.
-        </Text>
+        <Text style={typography.heading}>{t('addBook.partLengthTitle')}</Text>
+        <Text style={typography.small}>{t('addBook.partLengthBody')}</Text>
         <Segmented
-          label="Sentences per part"
+          label={t('addBook.sentencesLabel')}
           value={sentencesPerChunk}
           onChange={setSentencesPerChunk}
           options={[
-            { value: 1, label: '1 sentence' },
-            { value: 2, label: '2 sentences' },
+            { value: 1, label: t('addBook.oneSentence') },
+            { value: 2, label: t('addBook.twoSentences') },
           ]}
         />
       </Card>
@@ -130,12 +130,10 @@ export function AddBookScreen({ onSubmit, onCancel }: AddBookScreenProps) {
       {submitError ? <Notice tone="danger">{submitError}</Notice> : null}
 
       <View style={styles.actions}>
-        <Button label="Create audiobook" onPress={submit} busy={submitting} />
-        <Button label="Cancel" variant="ghost" onPress={onCancel} disabled={submitting} />
+        <Button label={t('addBook.create')} onPress={submit} busy={submitting} />
+        <Button label={t('common.cancel')} variant="ghost" onPress={onCancel} disabled={submitting} />
       </View>
-      <Text style={styles.footnote}>
-        Creating a book needs an internet connection. After the audio is on this phone, listening works offline.
-      </Text>
+      <Text style={styles.footnote}>{t('addBook.footnote')}</Text>
     </ScrollView>
   );
 }

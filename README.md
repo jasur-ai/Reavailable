@@ -6,6 +6,10 @@ downloads each part, checks it, stores it, and confirms it to the server. Only t
 its copy. Playback is controlled with four English voice commands, recognized on the device. The app never
 recognizes Uzbek speech.
 
+The interface is in **Uzbek by default**, with an English switch in Settings. The server can be hosted on
+Cloudflare Workers (recommended, [`worker/`](worker)) or run as a container on your own machine
+([`backend/`](backend)).
+
 ## How it works
 
 1. **Add a book.** Paste the text or pick a UTF-8 `.txt` or `.md` file.
@@ -19,18 +23,39 @@ recognizes Uzbek speech.
 
 ## Get the app
 
-**Android (test build).** Download `app-release.apk` and `app-release.apk.sha256` from the
-[`android-v0.1.0-test1` pre-release](https://github.com/jasur-ai/Reavailable/releases/tag/android-v0.1.0-test1) (about 150 MB). Check the download with
-`sha256sum -c app-release.apk.sha256`, allow installs from the app you open the file with, and install it.
-The APK is debug-signed, so it is for testing and sideloading, not for the Play Store. It needs a running
-Reavailable server (see below). It has not been installed and tested on a phone yet.
+**Android (test build).** Download `app-release.apk` and `app-release.apk.sha256` from the newest
+pre-release on the [releases page](https://github.com/jasur-ai/Reavailable/releases) (about 150 MB). Check
+the download with `sha256sum -c app-release.apk.sha256`, allow installs from the app you open the file with,
+and install it. The APK is debug-signed, so it is for testing and sideloading, not for the Play Store. It
+needs a running Reavailable server (see below). It has not been installed and tested on a phone yet.
+
+Step-by-step instructions in Uzbek, from installing the APK to hearing the first book, are in
+[docs/UZ_INSTALL.md](docs/UZ_INSTALL.md).
 
 **iOS.** Not built. Building for iPhone needs an Apple developer account for signing.
 
-## Run your own server
+## Run a server
 
-The app needs a Reavailable backend that is reachable over HTTPS. The backend is in `backend/` and builds
-into a container image. Run it on any host that runs containers (a VPS, or a platform such as Render or
+The app needs a Reavailable backend that is reachable over HTTPS. There are two implementations of the same
+API; pick one.
+
+### Option A: Cloudflare Workers (recommended)
+
+No machine to run, no volume, no reverse proxy, and an HTTPS address from `workers.dev`. The Worker keeps
+job state in D1 and audio in R2, and deletes each part as soon as the phone confirms it.
+
+1. Add three repository secrets (Settings → Secrets and variables → Actions): `CLOUDFLARE_API_TOKEN`,
+   `AZURE_SPEECH_KEY`, `AUDIOBOOK_API_KEY`.
+2. Run the workflow **Deploy speech server (Cloudflare Workers)** (Actions tab → Run workflow).
+3. Copy the address from the job summary into the app under **Settings → Server address**, and the value of
+   `AUDIOBOOK_API_KEY` into **Access key**.
+
+The workflow provisions the database and the bucket, deploys, and verifies the live endpoint before it
+reports success. Details, all settings and tuning notes: [worker/README.md](worker/README.md).
+
+### Option B: your own container
+
+The backend is in `backend/` and builds into a container image. Run it on any host that runs containers (a VPS, or a platform such as Render or
 Railway that can build from a Dockerfile):
 
 ```bash
@@ -55,7 +80,11 @@ requirements.
 | --- | --- | --- |
 | Backend API, chunking, synthesis pipeline, acknowledgement, retention | Complete | 110 pytest tests, ruff, mypy, live end-to-end run |
 | Backend container image | Built and smoke-tested in CI | Build, production guard, health check, non-root user, job creation |
-| Mobile sync (download, verify, acknowledge, resume, retry) | Complete | Unit tests, live end-to-end run |
+| Cloudflare Worker backend (`worker/`) | Complete | 117 vitest tests inside workerd against real local D1 and R2, strict type check, bundle dry-run, live `wrangler dev` run through the whole download flow |
+| Worker and mobile app together | Verified locally | The mobile end-to-end suite (5 tests) run against a live Worker |
+| Interface languages (Uzbek default, English switch) | Complete | Catalogue completeness test: every key has both languages and matching placeholders |
+| Deployment to a real Cloudflare account | **Not verified** | `api.cloudflare.com` is unreachable from the build sandbox; the deploy workflow checks the live endpoint itself |
+| Mobile sync (download, verify, acknowledge, resume, retry) | Complete | 220 unit tests, live end-to-end runs against both backends |
 | Mobile playback logic | Complete | 32 playback tests |
 | Voice commands (logic) | Complete | Unit tests with fakes |
 | Android test APK | Published as a pre-release, built on a GitHub runner | Model included, package name and permissions checked in the build |
@@ -65,21 +94,42 @@ requirements.
 | Live Azure speech calls | **Not verified** | Needs an Azure key and network access |
 | iOS build | **Not built** | Needs an Apple developer account |
 
-Continuous integration (`.github/workflows/ci.yml`) passed for the backend, mobile, end-to-end and container jobs on
-commit `1320a8c`. The open items and their reasons are in [docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md#4-open-items).
+Continuous integration (`.github/workflows/ci.yml`) runs six jobs: `backend`, `mobile`, `worker`,
+`end-to-end` (mobile suite against the Python backend), `container`, and `worker-end-to-end` (mobile suite
+against a live Worker). The open items and their reasons are in [docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md#4-open-items).
 
 ## Repository layout
 
 ```
-backend/      FastAPI service (Python 3.11+) and its container image: API, chunking, speech providers, storage, tests
-mobile/       Expo SDK 57 app (React Native, TypeScript): sync, playback, voice, UI, tests
-docs/         Architecture, plan review, testing report
-.github/      CI workflow and the Android build and release workflows
+worker/       Cloudflare Worker backend (TypeScript): API, chunking, Azure speech, D1 + R2, tests
+backend/      FastAPI service (Python 3.11+) and its container image: the same API, for self-hosting
+mobile/       Expo SDK 57 app (React Native, TypeScript): sync, playback, voice, UI, i18n, tests
+docs/         Architecture, plan review, testing report, Uzbek installation guide
+.github/      CI, Cloudflare deploy, and the Android build and release workflows
 ```
 
 ## Quick start (development)
 
-### Backend
+### Worker backend
+
+```bash
+cd worker
+npm ci
+npx wrangler d1 migrations apply reavailable-audiobooks --local
+npm run dev -- --port 8787 --var TTS_PROVIDER:fake --var ALLOW_FAKE_PROVIDER:true \
+  --var ALLOWED_VOICES:fake-uz --var DEFAULT_VOICE:fake-uz
+npm test          # 117 tests inside workerd with a real local D1 and R2
+```
+
+Then point the end-to-end suite at it:
+
+```bash
+cd ../mobile && E2E_API_BASE_URL=http://127.0.0.1:8787 npm run test:e2e
+```
+
+See [worker/README.md](worker/README.md) for configuration, deployment and tuning.
+
+### Python backend
 
 ```bash
 cd backend
@@ -140,6 +190,8 @@ Deployment must add HTTPS and per-IP rate limiting at a reverse proxy. Both are 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, data lifecycle, backend and mobile design, key decisions
 - [docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md): plan requirements, review findings and fixes, deviations, open items
 - [docs/TESTING.md](docs/TESTING.md): what is tested, what is verified, what is not, a manual device checklist
+- [docs/UZ_INSTALL.md](docs/UZ_INSTALL.md): o'rnatish va sozlash bo'yicha o'zbekcha yo'riqnoma
+- [worker/README.md](worker/README.md): hosted backend, configuration, deployment, limits, troubleshooting
 - [backend/README.md](backend/README.md): backend setup, configuration, API, container, deployment
 - [mobile/README.md](mobile/README.md): app setup, Android test build, scripts, voice model, storage, limitations
 
@@ -147,8 +199,11 @@ Deployment must add HTTPS and per-IP rate limiting at a reverse proxy. Both are 
 
 - Voice recognition, background playback, installation on a phone and live Azure output have not been verified.
 - The Android APK is debug-signed. A Play Store release needs a release keystore.
-- The backend is a single instance backed by SQLite. A hosted deployment needs a persistent volume.
+- The Python backend is a single instance backed by SQLite. A hosted deployment needs a persistent volume;
+  the Cloudflare Worker in `worker/` has no such limit.
 - The app library is stored as one JSON document, which suits a personal library.
+- On a Workers Free plan a long book is produced over several background passes (8 parts per pass), so the
+  first minutes after adding a book are spent synthesizing. Raise `CHUNKS_PER_PASS` on a paid plan.
 - The Vosk model checksum is not pinned, so the model download is not verified against a known value.
 - `npm audit` reports 54 findings. They come from four advisories, all in build, test and development tooling. `braces`, `node-forge` and `sprintf-js` have no fixed release yet. `uuid` is fixed only in a newer major version, and the old copy comes from Expo's iOS build tooling. `expo export` shows that none of them is in the app bundle. Do not run `npm audit fix --force`.
 

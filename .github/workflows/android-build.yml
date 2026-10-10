@@ -8,6 +8,14 @@ name: Android build (reusable)
 
 on:
   workflow_call:
+    inputs:
+      default_server_url:
+        description: >-
+          Server address baked into the app, for example
+          https://reavailable-api.example.workers.dev. Leave empty to make the user enter it in
+          Settings on first launch.
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -48,17 +56,26 @@ jobs:
         run: npx expo prebuild --platform android --no-install --clean
         env:
           CI: "1"
+          EXPO_PUBLIC_DEFAULT_SERVER_URL: ${{ inputs.default_server_url }}
 
       - name: Build the APK
         working-directory: mobile/android
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --console=plain
+        env:
+          # Expo inlines EXPO_PUBLIC_* variables into the JavaScript bundle at build time.
+          EXPO_PUBLIC_DEFAULT_SERVER_URL: ${{ inputs.default_server_url }}
 
       - name: Check the APK contents
         working-directory: mobile
         run: |
           set -euo pipefail
+          if [ -n "${EXPO_PUBLIC_DEFAULT_SERVER_URL:-}" ]; then
+            echo "Baked-in server address: $EXPO_PUBLIC_DEFAULT_SERVER_URL"
+          else
+            echo "No server address baked in; the app asks for it in Settings."
+          fi
           apk=android/app/build/outputs/apk/release/app-release.apk
           ls -lh "$apk"
           unzip -l "$apk" > apk-contents.txt

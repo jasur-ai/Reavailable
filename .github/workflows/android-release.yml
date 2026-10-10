@@ -1,8 +1,12 @@
 name: Android release
 
 # Publishes a GitHub pre-release with the APK when a tag named android-v* is pushed, for example:
-#   git tag android-v0.1.0-test1 && git push origin android-v0.1.0-test1
+#   git tag android-v0.2.0-test1 && git push origin android-v0.2.0-test1
 # The pre-release carries app-release.apk and its SHA-256 checksum.
+#
+# Set the repository variable DEFAULT_SERVER_URL (Settings -> Secrets and variables -> Actions ->
+# Variables) to the deployed speech server address, and the published APK starts with that address
+# already filled in. Without it the app asks for the address on first launch.
 
 on:
   push:
@@ -15,6 +19,8 @@ permissions:
 jobs:
   build:
     uses: ./.github/workflows/android-build.yml
+    with:
+      default_server_url: ${{ vars.DEFAULT_SERVER_URL }}
 
   publish:
     name: Publish pre-release

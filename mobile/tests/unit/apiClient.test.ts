@@ -81,6 +81,78 @@ describe('ApiClient: requests', () => {
     expect(calls[0].init.headers.Authorization).toBeUndefined();
   });
 
+  it('reads the server configuration without a job token', async () => {
+    const { fetch, calls } = recordingFetch(() =>
+      jsonResponse(200, {
+        status: 'ok',
+        version: '0.2.0',
+        provider: 'azure',
+        voices: ['uz-UZ-MadinaNeural', 'uz-UZ-SardorNeural'],
+        default_voice: 'uz-UZ-MadinaNeural',
+        requires_api_key: true,
+        api_key_ok: true,
+        max_transcript_chars: 200_000,
+        sentences_per_chunk_options: [1, 2],
+        job_ttl_hours: 24,
+      }),
+    );
+    const config = await clientWith(fetch, { apiKey: 'key' }).config();
+
+    expect(config).toEqual({
+      status: 'ok',
+      version: '0.2.0',
+      provider: 'azure',
+      voices: ['uz-UZ-MadinaNeural', 'uz-UZ-SardorNeural'],
+      default_voice: 'uz-UZ-MadinaNeural',
+      requires_api_key: true,
+      api_key_ok: true,
+      max_transcript_chars: 200_000,
+      sentences_per_chunk_options: [1, 2],
+      job_ttl_hours: 24,
+    });
+    expect(calls[0].url).toBe('http://server.test:8000/api/v1/config');
+    // The access key is a header, not a bearer token, and the endpoint needs no job token.
+    expect(calls[0].init.headers.Authorization).toBeUndefined();
+    expect(calls[0].init.headers['X-API-Key']).toBe('key');
+  });
+
+  it('fills in defaults for a configuration with missing fields', async () => {
+    const { fetch } = recordingFetch(() => jsonResponse(200, { status: 'ok' }));
+    expect(await clientWith(fetch).config()).toEqual({
+      status: 'ok',
+      version: 'unknown',
+      provider: 'unknown',
+      voices: [],
+      default_voice: '',
+      requires_api_key: false,
+      api_key_ok: false,
+      max_transcript_chars: 0,
+      sentences_per_chunk_options: [1, 2],
+      job_ttl_hours: 0,
+    });
+  });
+
+  it('keeps only well-typed voices and part-length options', async () => {
+    const { fetch } = recordingFetch(() =>
+      jsonResponse(200, { status: 'ok', voices: ['a', 7, null], sentences_per_chunk_options: [2, 'x'] }),
+    );
+    const config = await clientWith(fetch).config();
+    expect(config.voices).toEqual(['a']);
+    expect(config.sentences_per_chunk_options).toEqual([2]);
+    // With no explicit default the first voice is used.
+    expect(config.default_voice).toBe('a');
+  });
+
+  it('rejects a configuration without a status', async () => {
+    const { fetch } = recordingFetch(() => jsonResponse(200, { version: '1.0.0' }));
+    await expect(clientWith(fetch).config()).rejects.toMatchObject({ code: 'invalid_response', status: 502 });
+  });
+
+  it('reports a server without the endpoint as a 404, so the caller can use /health', async () => {
+    const { fetch } = recordingFetch(() => jsonResponse(404, { error: { code: 'not_found', message: 'nope' } }));
+    await expect(clientWith(fetch).config()).rejects.toMatchObject({ status: 404, code: 'not_found' });
+  });
+
   it('sends the transcript, the chunk size and the optional voice when creating a job', async () => {
     const { fetch, calls } = recordingFetch(() =>
       jsonResponse(202, {

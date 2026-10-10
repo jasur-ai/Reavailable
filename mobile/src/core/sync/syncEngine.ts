@@ -17,6 +17,7 @@ import {
   type DownloadedChunk,
   type JobCreatedDto,
 } from '../api/client';
+import { createTranslator, type Translate } from '../../i18n';
 import { describeError } from '../messages';
 import type { Library } from '../library/library';
 import type { AudioStore, Hasher, TokenVault } from '../library/ports';
@@ -63,6 +64,11 @@ export interface SyncDependencies {
   sleep: (ms: number) => Promise<void>;
   now?: () => number;
   options?: Partial<SyncOptions>;
+  /**
+   * Wording for the notes this engine stores on a book. It is a thunk, so the app can follow the
+   * interface language even after a download started. Tests omit it and get English.
+   */
+  translate?: () => Translate;
 }
 
 export interface SubmitInput extends CreateJobInput {
@@ -94,8 +100,8 @@ class IntegrityFailure extends Error {
 
 type PartOutcome = { stored: true } | { stored: false; code: string };
 
-const CONNECTION_NOTE = 'Waiting for a connection. Downloads resume automatically.';
-const PARTS_MISSING_NOTE = 'Some parts are still missing. Downloads resume automatically.';
+/** Notes are rendered in the interface language; English is the default for tests. */
+const englishTranslate = (): Translate => createTranslator('en');
 
 function isApiError(error: unknown, code: string): error is ApiError {
   return error instanceof ApiError && error.code === code;
@@ -145,6 +151,11 @@ export class SyncEngine {
 
   constructor(private readonly deps: SyncDependencies) {
     this.options = { ...DEFAULT_SYNC_OPTIONS, ...deps.options };
+  }
+
+  /** The translator for the current interface language. */
+  private get t(): Translate {
+    return (this.deps.translate ?? englishTranslate)();
   }
 
   /** Uploads a transcript as a new server job, stores the access token, and starts tracking it. */
@@ -346,7 +357,7 @@ export class SyncEngine {
     if (isGone(error)) {
       this.fail(bookId, stage, 'job_not_found', undefined, true);
     } else if (isTransient(error)) {
-      this.note(bookId, CONNECTION_NOTE);
+      this.note(bookId, this.t('sync.connection'));
     } else {
       this.fail(bookId, stage, codeOf(error), messageOf(error));
     }
@@ -397,7 +408,7 @@ export class SyncEngine {
             return;
           }
           const network = outcome.code === 'network' || outcome.code === 'timeout';
-          this.note(bookId, network ? CONNECTION_NOTE : describeError(outcome.code));
+          this.note(bookId, network ? this.t('sync.connection') : describeError(outcome.code, this.t));
           return;
         }
         if (this.unackedCount(bookId) >= this.options.progressiveAckBatchSize) {
@@ -423,7 +434,7 @@ export class SyncEngine {
       const complete = draft.chunks.length > 0 && draft.chunks.every((chunk) => chunk.state === 'stored');
       draft.status = complete ? 'ready' : 'downloading';
       if (!complete) {
-        draft.syncNote = draft.syncNote ?? PARTS_MISSING_NOTE;
+        draft.syncNote = draft.syncNote ?? this.t('sync.partsMissing');
       } else if (draft.serverReleased || draft.chunks.every((chunk) => chunk.acked)) {
         draft.syncNote = undefined;
       }
@@ -438,7 +449,7 @@ export class SyncEngine {
     } else if (isGone(error)) {
       this.markServerGone(bookId);
     } else if (isTransient(error)) {
-      this.note(bookId, CONNECTION_NOTE);
+      this.note(bookId, this.t('sync.connection'));
     } else {
       this.fail(bookId, 'download', codeOf(error), messageOf(error));
     }
@@ -465,7 +476,7 @@ export class SyncEngine {
         draft.status = 'failed';
         draft.failedStage = 'download';
         draft.errorCode = 'job_not_found';
-        draft.errorMessage = describeError('job_not_found');
+        draft.errorMessage = describeError('job_not_found', this.t);
       }
     });
   }
@@ -592,7 +603,7 @@ export class SyncEngine {
           // The server deleted this part after acknowledgement, so it cannot be fetched again.
           chunk.state = 'failed';
           chunk.lastError = 'file_missing';
-          draft.syncNote = 'Some parts were removed from this device and cannot be recovered.';
+          draft.syncNote = this.t('error.file_missing');
         } else {
           chunk.state = 'pending';
         }
@@ -668,7 +679,7 @@ export class SyncEngine {
       return;
     }
     if (isApiError(error, 'chunk_not_ready')) {
-      this.note(bookId, describeError('chunk_not_ready'));
+      this.note(bookId, describeError('chunk_not_ready', this.t));
       return;
     }
     if (isApiError(error, 'checksum_mismatch')) {
@@ -694,20 +705,20 @@ export class SyncEngine {
           draft.status = 'failed';
           draft.failedStage = 'download';
           draft.errorCode = 'checksum_rejected';
-          draft.errorMessage = describeError('checksum_rejected');
+          draft.errorMessage = describeError('checksum_rejected', this.t);
           draft.syncNote = undefined;
           return;
         }
         draft.status = 'downloading';
-        draft.syncNote = describeError('checksum_mismatch');
+        draft.syncNote = describeError('checksum_mismatch', this.t);
       });
       return;
     }
     if (isTransient(error)) {
-      this.note(bookId, CONNECTION_NOTE);
+      this.note(bookId, this.t('sync.connection'));
       return;
     }
-    this.note(bookId, describeError(codeOf(error), messageOf(error)));
+    this.note(bookId, describeError(codeOf(error), this.t, messageOf(error)));
   }
 
   // ------------------------------------------------------------------ helpers
@@ -780,7 +791,7 @@ export class SyncEngine {
       draft.status = 'failed';
       draft.failedStage = stage;
       draft.errorCode = code;
-      draft.errorMessage = describeError(code, message);
+      draft.errorMessage = describeError(code, this.t, message);
       draft.syncNote = undefined;
       if (gone) {
         draft.serverGone = true;

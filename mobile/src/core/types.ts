@@ -5,6 +5,8 @@
  * (sync, playback, voice commands) can be unit-tested under Node.
  */
 
+import type { Language } from '../i18n/language';
+
 export type ChunkState = 'pending' | 'downloading' | 'stored' | 'failed';
 
 export interface ChunkRecord {
@@ -58,8 +60,12 @@ export interface BookRecord {
   updatedAt: string;
 }
 
+/** Language of the interface. Voice commands stay English in every language. */
+export type { Language };
+
 export interface AppSettings {
   apiBaseUrl: string | null;
+  language: Language;
 }
 
 export interface LibraryData {

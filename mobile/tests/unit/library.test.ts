@@ -18,20 +18,26 @@ describe('Library: loading', () => {
     const library = new Library(new MemoryPersistence(), () => FIXED);
     await library.load();
     expect(library.books()).toEqual([]);
-    expect(library.settings()).toEqual({ apiBaseUrl: null });
+    expect(library.settings()).toEqual({ apiBaseUrl: null, language: 'uz' });
   });
 
   it('restores books and settings from storage', async () => {
     const persistence = new MemoryPersistence();
     persistence.text = JSON.stringify({
       version: 1,
-      settings: { apiBaseUrl: 'http://server.test:8000' },
+      settings: { apiBaseUrl: 'http://server.test:8000', language: 'en' },
       books: [makeBook('b1', ['stored'])],
     });
     const library = new Library(persistence);
     await library.load();
     expect(library.book('b1')?.title).toBe('Book b1');
     expect(library.settings().apiBaseUrl).toBe('http://server.test:8000');
+    expect(library.settings().language).toBe('en');
+  });
+
+  it('falls back to Uzbek for a language it does not know', () => {
+    expect(normalizeLibraryData({ settings: { language: 'klingon' } }).settings.language).toBe('uz');
+    expect(normalizeLibraryData({ settings: {} }).settings.language).toBe('uz');
   });
 
   it('drops corrupt entries instead of failing', () => {
@@ -49,6 +55,7 @@ describe('Library: loading', () => {
     });
     expect(normalized.books.map((book) => book.id)).toEqual(['ok']);
     expect(normalized.settings.apiBaseUrl).toBeNull();
+    expect(normalized.settings.language).toBe('uz');
   });
 
   it('treats a non-object document as an empty library', () => {
@@ -139,6 +146,20 @@ describe('Library: changes', () => {
     await library.flush();
     expect(library.settings().apiBaseUrl).toBe('https://books.example.org');
     expect(parsedLast(persistence).settings.apiBaseUrl).toBe('https://books.example.org');
+  });
+
+  it('stores the interface language in the settings', async () => {
+    const persistence = new MemoryPersistence();
+    const library = new Library(persistence, () => FIXED);
+    library.setLanguage('en');
+    await library.flush();
+    expect(library.settings().language).toBe('en');
+    expect(parsedLast(persistence).settings.language).toBe('en');
+
+    // Choosing the language again writes nothing, so the store stays quiet.
+    const version = library.getVersion();
+    library.setLanguage('en');
+    expect(library.getVersion()).toBe(version);
   });
 
   it('bumps the version and notifies subscribers on every change', () => {

@@ -1,5 +1,6 @@
 import { ApiError, NetworkError } from '../../src/core/api/client';
 import { Library } from '../../src/core/library/library';
+import { createTranslator } from '../../src/i18n';
 import { SyncEngine } from '../../src/core/sync/syncEngine';
 import type { BookRecord } from '../../src/core/types';
 import {
@@ -531,5 +532,48 @@ describe('SyncEngine: failure handling', () => {
     harness.library.setApiBaseUrl('https://another.test');
     await harness.library.flush();
     expect(JSON.parse(harness.persistence.text ?? '{}').settings.apiBaseUrl).toBe('https://another.test');
+  });
+});
+
+describe('SyncEngine: interface language', () => {
+  it('writes notes in Uzbek by default and follows a later switch to English', async () => {
+    const harness = createSyncHarness();
+    const engine = new SyncEngine({
+      library: harness.library,
+      audio: harness.audio,
+      tokens: harness.tokens,
+      hash: sha256,
+      clientFor: () => harness.server,
+      sleep: () => yieldSleep(),
+      options: { retryBaseDelayMs: 1, pollIntervalMs: 1 },
+      // The app passes a thunk, exactly like services.ts does.
+      translate: () => createTranslator(harness.library.settings().language),
+    });
+    harness.server.injectFault('downloadChunk', new NetworkError('offline'), 100);
+    const book = await engine.submit({
+      apiBaseUrl: harness.server.baseUrl,
+      title: 'Kitob',
+      transcript: SAMPLE_TRANSCRIPT,
+      sentencesPerChunk: 1,
+    });
+    await waitUntil(() => bookOf(harness, book.id).syncNote !== undefined, 'paused with a note');
+    // Uzbek is the default language of a new installation.
+    expect(bookOf(harness, book.id).syncNote).toContain('Ulanish kutilmoqda');
+
+    harness.library.setLanguage('en');
+    await engine.download(book.id);
+    await waitUntil(
+      () => bookOf(harness, book.id).syncNote?.includes('Waiting for a connection') === true,
+      'english note',
+    );
+  });
+
+  it('falls back to English when no translator is supplied', async () => {
+    const harness = createSyncHarness();
+    harness.library.setLanguage('uz');
+    harness.server.injectFault('downloadChunk', new NetworkError('offline'), 100);
+    const book = await submitSample(harness);
+    await waitUntil(() => bookOf(harness, book.id).syncNote !== undefined, 'paused with a note');
+    expect(bookOf(harness, book.id).syncNote).toContain('Waiting for a connection');
   });
 });

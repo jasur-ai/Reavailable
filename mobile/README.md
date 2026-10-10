@@ -45,19 +45,52 @@ The script checks that the archive contains `am/final.mdl` before it installs th
 `react-native-vosk` plugin in `app.json` bundles `assets/model-en-us` into the build. If the model
 is missing, the app still runs. Voice control then reports that the model could not be loaded.
 
-The app reads no environment variables. The server address and the optional access key are entered in
-Settings, so there is no `.env` file for the mobile app.
+### Configuration
+
+The app reads one optional build-time variable:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `EXPO_PUBLIC_DEFAULT_SERVER_URL` | empty | Server address a new installation starts with. Read by `src/core/config.ts` |
+
+Everything else is entered in **Settings**: the server address and the access key. The address is stored in
+the library document; the key is stored in the device keystore and kept in memory for the session. There is
+no `.env` file and no secret is compiled into the app.
+
+The Android release workflow bakes the address in from the repository variable `DEFAULT_SERVER_URL`, so a
+published APK can open with the server already filled in. Without it the app asks for the address on first
+launch. The address is a public URL, not a credential.
+
+## Interface languages
+
+The interface is in **Uzbek by default**, with English available in **Settings → Interface language**. The
+choice is stored in the library document, so it survives a restart, and it applies immediately: every screen
+re-renders, including the status of each book.
+
+- `src/i18n/strings.ts` is the whole catalogue: every key exists in both languages, and a test fails if a key
+  is missing one of them or if the `{placeholders}` differ between the two.
+- `src/i18n/translate.ts` produces a plain function `t(key, params)`. The presentation helpers take it as an
+  argument, so they stay free of React and are unit-tested under Node.
+- `src/ui/TranslateContext.tsx` provides it to the screens; `AppRoot` builds it from the stored language.
+- Notes stored on a book (sync notes, error messages) are written in the language that was current at the
+  time. Known error codes are re-translated on every render, so they follow a language switch; only an
+  unknown server message stays in the language it arrived in.
+- **Voice commands stay English in both languages** (`next`, `repeat`, `pause`, `resume`). The on-device
+  recognizer uses a closed English grammar; the app never recognizes Uzbek speech.
 
 ## Android test build
 
 The test APK is published as a pre-release on the [Releases page](https://github.com/jasur-ai/Reavailable/releases).
-The current one is [`android-v0.1.0-test1`](https://github.com/jasur-ai/Reavailable/releases/tag/android-v0.1.0-test1). Pre-releases use the tag pattern `android-v*`. Each release has two files: `app-release.apk` and `app-release.apk.sha256`.
+Pre-releases use the tag pattern `android-v*`; use the newest one. Each release has two files: `app-release.apk` and `app-release.apk.sha256`.
 
 1. Download both files to the phone or to a computer.
 2. Check the APK: `sha256sum -c app-release.apk.sha256`.
 3. Allow installs from the app you open the file with, then open `app-release.apk`.
-4. Open **Settings** and enter the HTTPS address of your server and its access key (see
-   [backend/README.md](../backend/README.md)).
+4. Open **Settings** and enter the HTTPS address of your server and its access key. The server is either the
+   Cloudflare Worker ([worker/README.md](../worker/README.md)) or the container
+   ([backend/README.md](../backend/README.md)).
+5. Tap **Test connection**: it reports the server version, its provider and the available voices, and it
+   tells you whether the access key was accepted.
 
 The APK is signed with the Expo debug keystore, so it is for testing and sideloading, not for the Play Store.
 Its voice model is the one the build downloads from `alphacephei.com` (see the limitations).
@@ -113,7 +146,7 @@ remove the book.
 | `npm run prebuild` | Regenerate the native projects (`expo prebuild --clean`) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint (Expo flat config, plus `no-console` for app code) |
-| `npm test` | Unit tests with coverage thresholds (lines, statements, functions: 85%) |
+| `npm test` | 220 unit tests with coverage thresholds (lines, statements, functions: 85%) |
 | `npm run test:e2e` | End-to-end tests against a running backend (see below) |
 | `npm run check` | `typecheck`, `lint`, and `test` |
 
@@ -130,6 +163,20 @@ cd backend && AUDIOBOOK_TTS_PROVIDER=fake AUDIOBOOK_DATA_DIR=/tmp/audiobook-e2e 
 cd mobile && E2E_API_BASE_URL=http://127.0.0.1:8000 npm run test:e2e
 ```
 
+The same suite runs against the Cloudflare Worker:
+
+```bash
+# terminal 1
+cd worker && npx wrangler dev --port 8787 --var TTS_PROVIDER:fake --var ALLOW_FAKE_PROVIDER:true \
+  --var ALLOWED_VOICES:fake-uz --var DEFAULT_VOICE:fake-uz --var VERSION:dev
+
+# terminal 2
+cd mobile && E2E_API_BASE_URL=http://127.0.0.1:8787 npm run test:e2e
+```
+
+The suite reads `/api/v1/config` when the server has it (the Worker does, the Python backend does not) and
+accepts a `404` there, so it works against both implementations. CI runs it against both.
+
 Without `E2E_API_BASE_URL` the suite is skipped, so `npm run check` stays offline.
 
 ## Project structure
@@ -140,13 +187,16 @@ app.json                   Expo configuration and native plugin options
 scripts/fetch-vosk-model.sh
 src/
   core/                    pure TypeScript, no native imports (unit-tested)
-    api/client.ts          HTTP client: timeouts, bearer token, checksum checks
+    config.ts              build-time defaults (the optional baked-in server address)
+    messages.ts            error codes to user-facing wording, in the current language
+    api/client.ts          HTTP client: timeouts, bearer token, checksum checks, /config
     sync/syncEngine.ts     download, verify, acknowledge, resume, retry, removal
     sync/chunkFiles.ts     file layout and verification of stored parts
     library/library.ts     in-memory library with coalesced persistence
     playback/playbackController.ts   queue, auto-advance, saved position
     voice/commands.ts      closed grammar and command parsing
     voice/voiceService.ts  recognizer lifecycle, confidence, cooldown
+  i18n/                    language list, the string catalogue (uz + en), the translator
   platform/                adapters to native modules
     audio/expoAudioPlayer.ts
     speech/voskRecognizer.ts       lazy-loads react-native-vosk
@@ -154,7 +204,7 @@ src/
     documents/transcriptFile.ts    .txt / .md picker
     crypto/sha256.ts
   app/                     wiring: bootstrap, services, React context
-  ui/                      screens, components, presentation helpers
+  ui/                      screens, components, presentation helpers, TranslateContext
 tests/
   unit/                    Jest suites and in-memory fakes (tests/unit/support)
   e2e/                     live backend contract tests

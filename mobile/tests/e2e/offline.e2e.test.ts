@@ -17,6 +17,7 @@ import { Library } from '../../src/core/library/library';
 import { PlaybackController } from '../../src/core/playback/playbackController';
 import { SyncEngine, type SyncApi } from '../../src/core/sync/syncEngine';
 import type { BookRecord } from '../../src/core/types';
+import { createTranslator } from '../../src/i18n';
 import { FakePlayer, settle } from '../unit/support/fakePlayer';
 import { MemoryAudioStore, MemoryPersistence, MemoryTokenVault, sha256 } from '../unit/support/memory';
 
@@ -62,6 +63,8 @@ function createDevice(clientFor: (baseUrl: string) => SyncApi): Device {
     clientFor,
     sleep,
     options: { retryBaseDelayMs: 50, pollIntervalMs: 200, pollTimeoutMs: 120_000 },
+    // The same wiring the app uses: notes follow the interface language (Uzbek by default).
+    translate: () => createTranslator(library.settings().language),
   });
   return { library, audio, tokens, persistence, sync };
 }
@@ -95,9 +98,22 @@ function offlineClient(calls: string[]): SyncApi {
 }
 
 describeLive('offline audiobook contract (live backend)', () => {
-  it('reports a healthy server', async () => {
-    const health = await new ApiClient({ baseUrl: BASE_URL }).health();
+  it('reports a healthy server, and its configuration when the server has one', async () => {
+    const client = new ApiClient({ baseUrl: BASE_URL });
+    const health = await client.health();
     expect(health.status).toBe('ok');
+
+    try {
+      const config = await client.config();
+      expect(config.status).toBe('ok');
+      expect(config.voices.length).toBeGreaterThan(0);
+      expect(config.default_voice.length).toBeGreaterThan(0);
+      expect(config.max_transcript_chars).toBeGreaterThan(0);
+    } catch (error) {
+      // The reference Python backend has no /config endpoint; a 404 is the expected answer there.
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(404);
+    }
   });
 
   it('syncs a book, verifies every part, removes the server copy, and plays it offline', async () => {

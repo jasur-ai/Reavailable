@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Alert, AppState, BackHandler, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { createTranslator } from '../i18n';
+import { TranslateProvider } from '../ui/TranslateContext';
 import { AddBookScreen } from '../ui/screens/AddBookScreen';
 import { LibraryScreen } from '../ui/screens/LibraryScreen';
 import { PlayerScreen } from '../ui/screens/PlayerScreen';
@@ -25,6 +27,9 @@ export function AppRoot() {
   const playback = useStore(services.stores.playback);
   const voice = useStore(services.stores.voice);
   const books = services.library.books();
+  const language = services.library.settings().language;
+  // The library store above re-renders this component when the language setting changes.
+  const t = useMemo(() => createTranslator(language), [language]);
 
   const [stack, setStack] = useState<Route[]>([{ name: 'library' }]);
   const [refreshing, setRefreshing] = useState(false);
@@ -75,7 +80,7 @@ export function AppRoot() {
 
   const createBook = async (input: { title: string; transcript: string; sentencesPerChunk: 1 | 2 }) => {
     if (!serverUrl) {
-      throw new Error('Set the server address in Settings first.');
+      throw new Error(t('app.serverNeeded'));
     }
     await services.sync.submit({ apiBaseUrl: serverUrl, ...input });
     setStack([{ name: 'library' }]);
@@ -83,7 +88,7 @@ export function AppRoot() {
 
   const removeBook = (bookId: string) => {
     services.sync.removeBook(bookId).catch((error: unknown) => {
-      Alert.alert('The book could not be removed', messageFrom(error, 'Try again.'));
+      Alert.alert(t('app.removeFailed'), messageFrom(error, t('app.tryAgain')));
     });
   };
 
@@ -120,10 +125,12 @@ export function AppRoot() {
         <SettingsScreen
           initialServerUrl={serverUrl ?? ''}
           initialApiKey={services.getServerKey()}
+          language={language}
           voiceEnabled={voice.status === 'listening' || voice.status === 'starting'}
           voiceAvailable={voice.status !== 'unavailable'}
           onSave={(input) => services.saveServerSettings(input)}
           onTest={(input) => services.checkServer(input)}
+          onLanguageChange={(next) => services.setLanguage(next)}
           onVoiceToggle={toggleVoice}
           onBack={pop}
         />
@@ -164,7 +171,7 @@ export function AppRoot() {
         { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right },
       ]}
     >
-      {screen}
+      <TranslateProvider value={t}>{screen}</TranslateProvider>
     </View>
   );
 }

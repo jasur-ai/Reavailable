@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import type { BookRecord } from '../../core/types';
-import { bookStatusView, type Tone } from '../presentation';
+import { bookStatusView, voiceLabel, type Tone } from '../presentation';
 import { Badge, Button, Card, Notice, ProgressBar } from '../components/common';
 import { colors, spacing, typography } from '../theme';
+import { useTranslate } from '../TranslateContext';
 
 const TONE_TO_BADGE: Record<Tone, Tone> = {
   neutral: 'neutral',
@@ -27,20 +28,17 @@ export interface LibraryScreenProps {
 
 export function LibraryScreen(props: LibraryScreenProps) {
   const { books, serverConfigured } = props;
+  const t = useTranslate();
   const sorted = useMemo(
     () => [...books].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
     [books],
   );
 
   const confirmRemove = (book: BookRecord) => {
-    Alert.alert(
-      'Remove this book?',
-      'The audio is deleted from this phone. If the server still has it, the server copy is deleted too. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => props.onRemove(book) },
-      ],
-    );
+    Alert.alert(t('library.removeTitle'), t('library.removeBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.remove'), style: 'destructive', onPress: () => props.onRemove(book) },
+    ]);
   };
 
   return (
@@ -52,27 +50,22 @@ export function LibraryScreen(props: LibraryScreenProps) {
       ListHeaderComponent={
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            <Text style={typography.title}>Library</Text>
-            <Button label="Settings" variant="ghost" onPress={props.onSettings} />
+            <Text style={typography.title}>{t('library.title')}</Text>
+            <Button label={t('library.settings')} variant="ghost" onPress={props.onSettings} />
           </View>
-          {!serverConfigured ? (
-            <Notice tone="warning">Set the server address in Settings before adding a book.</Notice>
-          ) : null}
+          {!serverConfigured ? <Notice tone="warning">{t('library.serverNeeded')}</Notice> : null}
           <Button
-            label="Add a book"
+            label={t('library.addBook')}
             onPress={props.onAdd}
             disabled={!serverConfigured}
-            accessibilityHint="Opens a form to paste or load a transcript"
+            accessibilityHint={t('library.addBookHint')}
           />
         </View>
       }
       ListEmptyComponent={
         <Card>
-          <Text style={typography.heading}>No books yet</Text>
-          <Text style={typography.small}>
-            Add an Uzbek text. The server turns it into audio in short parts, your phone stores them, and you can then
-            listen offline and control playback with English voice commands.
-          </Text>
+          <Text style={typography.heading}>{t('library.emptyTitle')}</Text>
+          <Text style={typography.small}>{t('library.emptyBody')}</Text>
         </Card>
       }
       renderItem={({ item }) => (
@@ -99,7 +92,8 @@ function BookCard({
   onRetry: () => void;
   onRemove: () => void;
 }) {
-  const view = bookStatusView(book);
+  const t = useTranslate();
+  const view = bookStatusView(book, t);
   return (
     <Card>
       <View style={styles.bookHeader}>
@@ -109,35 +103,29 @@ function BookCard({
         <Badge label={view.label} tone={TONE_TO_BADGE[view.tone]} />
       </View>
       <Text style={typography.small}>
-        {book.voice ? `Voice: ${voiceLabel(book.voice)}` : ''}
-        {book.warnings.includes('cyrillic_text') ? ' · Contains Cyrillic text (may be mispronounced)' : ''}
+        {book.voice ? t('library.voiceLabel', { voice: voiceLabel(book.voice, t) }) : ''}
+        {book.warnings.includes('cyrillic_text') ? ` · ${t('library.cyrillicNote')}` : ''}
       </Text>
       {view.progress ? (
-        <ProgressBar value={view.progress.value} total={view.progress.total} label={`${book.title} progress`} />
+        <ProgressBar
+          value={view.progress.value}
+          total={view.progress.total}
+          label={t('library.progressLabel', { title: book.title })}
+        />
       ) : null}
       <Text style={typography.small}>{view.detail}</Text>
       {book.status === 'failed' && book.errorCode ? (
-        <Text style={styles.code}>Code: {book.errorCode}</Text>
+        <Text style={styles.code}>{t('library.errorCode', { code: book.errorCode })}</Text>
       ) : null}
       <View style={styles.actions}>
-        {view.canOpen ? <Button label="Open" onPress={onOpen} style={styles.action} /> : null}
+        {view.canOpen ? <Button label={t('common.open')} onPress={onOpen} style={styles.action} /> : null}
         {view.canRetry ? (
-          <Button label="Retry" variant="secondary" onPress={onRetry} style={styles.action} />
+          <Button label={t('common.retry')} variant="secondary" onPress={onRetry} style={styles.action} />
         ) : null}
-        <Button label="Remove" variant="ghost" onPress={onRemove} style={styles.action} />
+        <Button label={t('common.remove')} variant="ghost" onPress={onRemove} style={styles.action} />
       </View>
     </Card>
   );
-}
-
-function voiceLabel(voice: string): string {
-  if (voice.includes('Madina')) {
-    return 'Madina (female)';
-  }
-  if (voice.includes('Sardor')) {
-    return 'Sardor (male)';
-  }
-  return voice;
 }
 
 const styles = StyleSheet.create({
