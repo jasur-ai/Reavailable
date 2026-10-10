@@ -45,13 +45,15 @@ jobs:
           sha256sum app-release.apk > app-release.apk.sha256
           cat app-release.apk.sha256
           cat > notes.md <<'EOF'
-          Android test build of Reavailable.
+          Android test build of Reavailable: an offline audiobook reader for Uzbek text.
 
+          - The interface opens in Uzbek. English is a switch under Settings -> Interface language.
           - The APK is debug-signed. It is for sideloading and testing, not for the Play Store.
           - Install: download app-release.apk, check it against app-release.apk.sha256, allow installs for the app you open it with, then open the file.
-          - Set the server address in Settings. The release app connects only over HTTPS.
-          - Voice commands use the English model included in the APK.
-          - Not yet tested on a physical phone. See docs/TESTING.md in the repository.
+          - You need a running Reavailable server. Deploy it with the "Deploy speech server (Cloudflare Workers)" workflow, then enter the address and the access key under Settings. The release app connects only over HTTPS.
+          - Voice commands are English only: next, repeat, pause, resume. They run on the phone with the model inside this APK and work offline.
+          - Step-by-step instructions in Uzbek: docs/UZ_INSTALL.md in the repository.
+          - Not yet installed or tested on a physical phone. What is and is not verified: docs/TESTING.md.
           EOF
           gh release create "$TAG" app-release.apk app-release.apk.sha256 \
             --repo "$GITHUB_REPOSITORY" \
