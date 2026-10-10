@@ -1,10 +1,14 @@
 name: Android test build
 
-# Builds the APK for every push that changes the mobile app or the Android workflows, and can be
-# started manually (manual start works once these files are on the default branch).
+# Builds the APK for every branch push that changes the mobile app or the Android workflows, and can
+# be started manually (manual start works once these files are on the default branch).
+#
+# Tag pushes are excluded: android-release.yml builds and publishes those, and a second build of the
+# same commit would only spend runner time.
 
 on:
   push:
+    branches: ["**"]
     paths:
       - "mobile/**"
       - ".github/workflows/android-*.yml"

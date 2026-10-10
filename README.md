@@ -24,7 +24,9 @@ Cloudflare Workers (recommended, [`worker/`](worker)) or run as a container on y
 ## Get the app
 
 **Android (test build).** Download `app-release.apk` and `app-release.apk.sha256` from the newest
-pre-release on the [releases page](https://github.com/jasur-ai/Reavailable/releases) (about 150 MB). Check
+pre-release on the [releases page](https://github.com/jasur-ai/Reavailable/releases) (about 150 MB); the
+current one is [`android-v0.2.0-test1`](https://github.com/jasur-ai/Reavailable/releases/tag/android-v0.2.0-test1),
+which has the hosted-server support and the Uzbek interface. Check
 the download with `sha256sum -c app-release.apk.sha256`, allow installs from the app you open the file with,
 and install it. The APK is debug-signed, so it is for testing and sideloading, not for the Play Store. It
 needs a running Reavailable server (see below). It has not been installed and tested on a phone yet.

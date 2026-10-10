@@ -123,8 +123,11 @@ Python service and the Cloudflare Worker (CI has a job for each).
 
 ### On GitHub-hosted runners
 
-- **CI** (`.github/workflows/ci.yml`) passed on commit `1320a8c` (run `37965656119`): the backend, mobile,
-  end-to-end and container jobs.
+- **CI** (`.github/workflows/ci.yml`) passed on commit `315572c` (run `38035940968`) with six jobs: backend,
+  mobile, worker (type check, 117 tests in workerd, bundle dry-run, and the chunking fixture compared against
+  the Python reference), container, end-to-end against the Python backend, and end-to-end against a live
+  Worker started with `wrangler dev` in the job. The same six jobs passed on `f14d245` (run `38035706095`).
+  Earlier runs on `1320a8c` (run `37965656119`) covered the four jobs that existed then.
 - **Android APK** (`android-build.yml`) builds a release APK on an Ubuntu runner (runs `37964171967` and
   `37965656458`). The build checks the APK itself: the Vosk model is inside it, `classes.dex` and the signature
   are present, the package name is `uz.reavailable.app`, the app requests `RECORD_AUDIO` and `INTERNET`, and it
@@ -132,9 +135,12 @@ Python service and the Cloudflare Worker (CI has a job for each).
 - **Backend container** (`container` job in CI): the image builds, refuses to start in production without
   credentials, starts with the documented production settings and passes the health check. In development mode it
   runs as uid 10001 and accepts a job with `202`.
-- **Release** (`android-release.yml`): the tag `android-v0.1.0-test1` (commit `1320a8c`) built the APK and published
-  it as a pre-release with `app-release.apk.sha256` (run `37966899132`). The sandbox cannot download release assets,
-  so the file itself was not re-checked here. The checks in the build run on the same commit.
+- **Release** (`android-release.yml`): the tag `android-v0.2.0-test1` (commit `315572c`) built the APK and
+  published it as a pre-release with `app-release.apk.sha256` (run `38035941766`, `app-release.apk`
+  154,978,882 bytes). The build's own checks passed: the Vosk model is inside the APK, the package name is
+  `uz.reavailable.app`, and the permissions are the expected ones. The same checks passed for
+  `android-v0.1.0-test1` (commit `1320a8c`, run `37966899132`). The sandbox cannot download release assets,
+  so the published file itself was not re-checked here.
 - **Model download**: the CI runner downloads the Vosk archive from `alphacephei.com`. The step succeeds. The
   checksum is not pinned, so the download is not checked against a known value.
 - **Production settings, locally**: with the documented production settings, `POST /api/v1/jobs` returns `401`
