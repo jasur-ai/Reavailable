@@ -287,8 +287,8 @@ export const STRINGS = {
   },
   'voice.starting': { uz: 'Ovozli buyruqlar ishga tushmoqda…', en: 'Starting voice commands…' },
   'voice.listening': {
-    uz: 'Tinglanmoqda. "next", "repeat", "pause" yoki "resume" deng.',
-    en: 'Listening. Say "next", "repeat", "pause" or "resume".',
+    uz: 'Tinglanmoqda. "start", "pause", "resume", "next", "previous", "repeat" deb ayting.',
+    en: 'Listening. Say "start", "pause", "resume", "next", "previous" or "repeat".',
   },
   'voice.unavailableBuild': {
     uz: 'Oflayn ovozli boshqaruv bu versiyada ishlamaydi. Buning uchun nutq moduli bo\'lgan development versiya '
@@ -487,6 +487,8 @@ export const STRINGS = {
   // ---------------------------------------------------------------- voice command indicator
   'voiceIndicator.listening': { uz: 'Ovozli buyruq tinglanmoqda', en: 'Listening for voice commands' },
   'voiceIndicator.heard': { uz: 'Qabul qilindi: {command}', en: 'Heard: {command}' },
+  'voiceCommand.start': { uz: 'Boshlash', en: 'Start' },
+  'voiceCommand.previous': { uz: 'Oldingi', en: 'Previous' },
   'voiceCommand.next': { uz: 'Keyingi', en: 'Next' },
   'voiceCommand.repeat': { uz: 'Takrorlash', en: 'Repeat' },
   'voiceCommand.pause': { uz: 'Pauza', en: 'Pause' },

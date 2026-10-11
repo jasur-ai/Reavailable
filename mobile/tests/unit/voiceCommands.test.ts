@@ -2,22 +2,25 @@ import {
   UNKNOWN_TOKEN,
   VOICE_COMMANDS,
   VOICE_GRAMMAR,
-  isVoiceCommand,
+  VOICE_WORDS,
+  isVoiceWord,
   parseCommand,
   readRecognizedText,
 } from '../../src/core/voice/commands';
 
 describe('voice grammar', () => {
-  it('contains exactly the four commands (the three planned ones plus resume) and the unknown token', () => {
-    expect(VOICE_COMMANDS).toEqual(['next', 'repeat', 'pause', 'resume']);
-    expect(VOICE_GRAMMAR).toEqual([...VOICE_COMMANDS, UNKNOWN_TOKEN]);
+  it('offers every command with its synonyms, plus the unknown token', () => {
+    expect(VOICE_COMMANDS).toEqual(['start', 'pause', 'resume', 'next', 'previous', 'repeat']);
+    expect(VOICE_GRAMMAR).toEqual([...Object.keys(VOICE_WORDS), UNKNOWN_TOKEN]);
+    for (const word of ['start', 'play', 'pause', 'stop', 'resume', 'continue', 'next', 'skip', 'previous', 'back', 'repeat', 'again']) {
+      expect(VOICE_GRAMMAR).toContain(word);
+    }
   });
 
   it('recognizes only grammar words as commands', () => {
-    expect(isVoiceCommand('next')).toBe(true);
-    expect(isVoiceCommand('back')).toBe(false);
-    expect(isVoiceCommand('faster')).toBe(false);
-    expect(isVoiceCommand('[unk]')).toBe(false);
+    expect(isVoiceWord('next')).toBe(true);
+    expect(isVoiceWord('faster')).toBe(false);
+    expect(isVoiceWord('[unk]')).toBe(false);
   });
 });
 
@@ -59,6 +62,12 @@ describe('parseCommand', () => {
     ['  Repeat  ', 'repeat'],
     ['PAUSE', 'pause'],
     ['resume.', 'resume'],
+    ['start', 'start'],
+    ['play', 'start'],
+    ['stop', 'pause'],
+    ['skip', 'next'],
+    ['back', 'previous'],
+    ['again', 'repeat'],
   ])('maps %p to %p', (raw, expected) => {
     expect(parseCommand(raw, MIN)).toBe(expected);
   });
@@ -66,7 +75,7 @@ describe('parseCommand', () => {
   it.each([
     ['', 'empty result'],
     ['next time', 'a phrase, not a single word'],
-    ['play', 'a word outside the grammar'],
+    ['hello', 'a word outside the grammar'],
     ['[unk]', 'the unknown token'],
     ['next [unk]', 'a command mixed with unknown speech'],
     ['123', 'digits only'],
@@ -86,5 +95,16 @@ describe('parseCommand', () => {
 
   it('accepts a command when the engine does not report confidence', () => {
     expect(parseCommand('resume', 0.99)).toBe('resume');
+  });
+});
+
+describe('partial results', () => {
+  it('reads the partial JSON form', () => {
+    expect(readRecognizedText('{"partial": "pause"}')).toEqual({ text: 'pause', confidence: null });
+  });
+
+  it('parses a partial command word', () => {
+    expect(parseCommand('{"partial": "next"}', 0.5)).toBe('next');
+    expect(parseCommand('{"partial": "next time"}', 0.5)).toBeNull();
   });
 });

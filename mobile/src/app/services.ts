@@ -113,17 +113,25 @@ export async function createAppServices(): Promise<AppServices> {
 
   const dispatchVoiceCommand = (command: VoiceCommand): void => {
     switch (command) {
-      case 'next':
-        void playback.next();
-        break;
-      case 'repeat':
-        void playback.repeat();
+      case 'start':
+      case 'resume':
+        void playback.play();
         break;
       case 'pause':
         void playback.pause();
         break;
-      case 'resume':
-        void playback.play();
+      case 'next':
+        void playback.next();
+        break;
+      case 'previous': {
+        const { index } = playback.getSnapshot();
+        if (index > 0) {
+          void playback.goTo(index - 1);
+        }
+        break;
+      }
+      case 'repeat':
+        void playback.repeat();
         break;
     }
   };

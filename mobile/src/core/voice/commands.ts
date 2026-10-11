@@ -1,20 +1,40 @@
 /**
  * English voice commands. The recognizer is restricted to this closed vocabulary, so anything
  * else is rejected as [unk] and cannot trigger an action.
+ *
+ * Each command has one or more spoken words. Synonyms are kept to words that sound clearly
+ * different from each other, so the recognizer does not confuse "pause" with "play".
  */
 
-export const VOICE_COMMANDS = ['next', 'repeat', 'pause', 'resume'] as const;
+/** The actions the player understands. */
+export const VOICE_COMMANDS = ['start', 'pause', 'resume', 'next', 'previous', 'repeat'] as const;
 
 export type VoiceCommand = (typeof VOICE_COMMANDS)[number];
+
+/** Every word the recognizer listens for, mapped to the action it triggers. */
+export const VOICE_WORDS: Readonly<Record<string, VoiceCommand>> = {
+  start: 'start',
+  play: 'start',
+  pause: 'pause',
+  stop: 'pause',
+  resume: 'resume',
+  continue: 'resume',
+  next: 'next',
+  skip: 'next',
+  previous: 'previous',
+  back: 'previous',
+  repeat: 'repeat',
+  again: 'repeat',
+};
 
 /** Token the recognizer emits for words outside the grammar. */
 export const UNKNOWN_TOKEN = '[unk]';
 
-/** Grammar handed to the recognizer. */
-export const VOICE_GRAMMAR: readonly string[] = [...VOICE_COMMANDS, UNKNOWN_TOKEN];
+/** Grammar handed to the recognizer: every listened word plus the unknown token. */
+export const VOICE_GRAMMAR: readonly string[] = [...Object.keys(VOICE_WORDS), UNKNOWN_TOKEN];
 
-export function isVoiceCommand(word: string): word is VoiceCommand {
-  return (VOICE_COMMANDS as readonly string[]).includes(word);
+export function isVoiceWord(word: string): boolean {
+  return Object.prototype.hasOwnProperty.call(VOICE_WORDS, word);
 }
 
 export interface RecognizedText {
@@ -23,18 +43,19 @@ export interface RecognizedText {
   confidence: number | null;
 }
 
-/** Reads a recognizer result. Accepts plain text and Vosk's JSON form ({"text": ..., "result": [...]}). */
+/**
+ * Reads a recognizer result. Accepts plain text, Vosk's final JSON ({"text": ..., "result": [...]})
+ * and Vosk's partial JSON ({"partial": ...}), which arrives while the user is still speaking.
+ */
 export function readRecognizedText(raw: string): RecognizedText {
   const trimmed = raw.trim();
   if (trimmed.startsWith('{')) {
     try {
       const parsed: unknown = JSON.parse(trimmed);
       if (typeof parsed === 'object' && parsed !== null) {
-        const record = parsed as { text?: unknown; result?: unknown };
-        return {
-          text: typeof record.text === 'string' ? record.text : '',
-          confidence: lowestConfidence(record.result),
-        };
+        const record = parsed as { text?: unknown; partial?: unknown; result?: unknown };
+        const text = typeof record.text === 'string' ? record.text : typeof record.partial === 'string' ? record.partial : '';
+        return { text, confidence: lowestConfidence(record.result) };
       }
     } catch {
       // Not JSON after all: treat the whole string as text.
@@ -70,11 +91,11 @@ export function parseCommand(raw: string, minConfidence: number): VoiceCommand |
     return null;
   }
   const word = tokens[0].replace(/[^a-z]/g, '');
-  if (!isVoiceCommand(word)) {
+  if (!isVoiceWord(word)) {
     return null;
   }
   if (confidence !== null && confidence < minConfidence) {
     return null;
   }
-  return word;
+  return VOICE_WORDS[word];
 }

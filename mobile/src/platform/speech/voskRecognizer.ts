@@ -76,6 +76,15 @@ export function createVoskRecognizer(vosk: VoskModule): SpeechRecognizerPort {
       };
     },
 
+    onPartial(listener: (raw: string) => void): () => void {
+      const subscription = vosk.onPartialResult((text: string) => {
+        listener(text);
+      });
+      return () => {
+        subscription.remove();
+      };
+    },
+
     onError(listener: (message: string) => void): () => void {
       const subscription = vosk.onError((error: unknown) => {
         listener(describe(error));

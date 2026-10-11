@@ -14,8 +14,13 @@ export interface SpeechRecognizerPort {
   /** Starts listening with the given grammar. Resolves once listening has started. */
   start(grammar: readonly string[]): Promise<void>;
   stop(): Promise<void>;
-  /** Final results only; each call receives the raw result text. */
+  /** Final results only; each call receives the raw result text. Fires after a pause in speech. */
   onResult(listener: (raw: string) => void): () => void;
+  /**
+   * Partial results, while the user is still speaking. Optional: a recognizer without it still works,
+   * just more slowly, because final results need a pause in speech.
+   */
+  onPartial?(listener: (raw: string) => void): () => void;
   onError(listener: (message: string) => void): () => void;
   /** Fires when the engine stops by itself (for example, a timeout). */
   onStopped(listener: () => void): () => void;
@@ -61,6 +66,13 @@ export class VoiceCommandService {
       recognizer.onResult((raw) => {
         this.handleResult(raw);
       }),
+      ...(recognizer.onPartial
+        ? [
+            recognizer.onPartial((raw) => {
+              this.handleResult(raw);
+            }),
+          ]
+        : []),
       recognizer.onError((message) => {
         this.fail(message);
       }),
