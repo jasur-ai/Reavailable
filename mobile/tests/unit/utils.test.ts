@@ -261,7 +261,7 @@ describe('presentation: playback and voice messages', () => {
 
   it('tells the user which commands to say while listening', () => {
     expect(voiceMessage({ status: 'listening', message: null, lastCommand: null, lastCommandAt: null }, en)).toBe(
-      'Listening. Say "next", "repeat", "pause" or "resume".',
+      'Listening. Say "start", "pause", "resume", "next", "previous" or "repeat".',
     );
     // The commands themselves stay English in every interface language.
     expect(voiceMessage({ status: 'listening', message: null, lastCommand: null, lastCommandAt: null }, uz)).toMatch(/next/);
