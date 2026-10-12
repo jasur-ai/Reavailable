@@ -77,7 +77,12 @@ export async function installUpdate(manifest: UpdateManifest): Promise<void> {
   if (!choice) {
     throw new Error('no-apk');
   }
+  // Start from an empty folder. A previous attempt may have left the same APK behind, and the
+  // downloader refuses to overwrite an existing file, so a second press would always fail.
   const folder = new Directory(Paths.cache, 'updates');
+  if (folder.exists) {
+    folder.delete();
+  }
   folder.create({ idempotent: true, intermediates: true });
   const file = await File.downloadFileAsync(choice.apk.url, folder);
   const contentUri = await getContentUriAsync(file.uri);
