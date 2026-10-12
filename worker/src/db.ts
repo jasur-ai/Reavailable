@@ -192,6 +192,14 @@ export class JobStore {
    * Record a failed part. The text is kept so a retry can synthesize the same part again; it is
    * dropped when the part is acknowledged or the job is deleted.
    */
+  /** A transient failure: the part stays pending, so a later pass tries it again. */
+  async markChunkRetry(id: string, position: number, code: string, attempts: number): Promise<void> {
+    await this.db
+      .prepare(`UPDATE chunks SET last_error = ?1, attempts = ?2 WHERE job_id = ?3 AND position = ?4 AND status = 'pending'`)
+      .bind(code.slice(0, 50), attempts, id, position)
+      .run();
+  }
+
   async markChunkFailed(id: string, position: number, code: string, attempts: number): Promise<void> {
     await this.db
       .prepare(`UPDATE chunks SET status = 'failed', last_error = ?1, attempts = ?2 WHERE job_id = ?3 AND position = ?4`)

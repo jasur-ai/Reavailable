@@ -140,6 +140,7 @@ export function Field({
   hint,
   multiline = false,
   minHeight,
+  fill = false,
   ...rest
 }: {
   label: string;
@@ -149,10 +150,12 @@ export function Field({
   hint?: string;
   multiline?: boolean;
   minHeight?: number;
+  /** Take all the free height of the parent; the text inside scrolls on its own. */
+  fill?: boolean;
 } & Omit<TextInputProps, 'value' | 'onChangeText' | 'multiline'>) {
   const [focused, setFocused] = useState(false);
   return (
-    <View style={styles.field}>
+    <View style={[styles.field, fill ? styles.fieldFill : null]}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
         accessibilityLabel={label}
@@ -166,6 +169,7 @@ export function Field({
         style={[
           styles.input,
           multiline ? { minHeight: minHeight ?? 160, lineHeight: 23 } : null,
+          fill ? styles.inputFill : null,
           focused ? styles.inputFocused : null,
           error ? styles.inputError : null,
         ]}
@@ -298,6 +302,8 @@ const styles = StyleSheet.create({
     ...elevation.card,
   },
   field: { gap: spacing.xs },
+  fieldFill: { flex: 1 },
+  inputFill: { flex: 1, minHeight: 120 },
   fieldLabel: { ...typography.small, fontWeight: '600', color: colors.text },
   input: {
     backgroundColor: colors.surface,

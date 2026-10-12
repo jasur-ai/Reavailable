@@ -322,7 +322,16 @@ export class JobService {
             });
           } catch (error) {
             const { code, message } = classify(error);
-            await this.store.markChunkFailed(jobId, chunk.position, code, (chunk.attempts ?? 0) + 1);
+            const attempts = (chunk.attempts ?? 0) + 1;
+            const retryable =
+              error instanceof TtsError && error.transient && attempts < this.settings.chunkMaxAttempts;
+            if (retryable) {
+              // The provider is busy or briefly down: keep the part pending and let a later pass retry it.
+              // Only the part is retried; the job is not failed for one slow request.
+              await this.store.markChunkRetry(jobId, chunk.position, code, attempts);
+              continue;
+            }
+            await this.store.markChunkFailed(jobId, chunk.position, code, attempts);
             failure = failure ?? { code, message };
           }
         }

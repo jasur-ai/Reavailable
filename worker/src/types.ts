@@ -33,6 +33,7 @@ export interface Env {
   CHUNKS_PER_PASS?: string;
   TTS_CONCURRENCY?: string;
   TTS_MAX_ATTEMPTS?: string;
+  CHUNK_MAX_ATTEMPTS?: string;
   TTS_RETRY_BASE_DELAY_MS?: string;
   TTS_TIMEOUT_MS?: string;
   /** Wall-clock budget of one background synthesis pass. */

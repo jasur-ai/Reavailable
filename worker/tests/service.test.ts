@@ -173,12 +173,46 @@ describe('synthesis failures', () => {
       calls += 1;
       throw new TtsError('tts_unavailable', 'throttled', true);
     });
-    const service = serviceWith(alwaysBusy, { TTS_RETRY_BASE_DELAY_MS: '0', TTS_MAX_ATTEMPTS: '3' });
+    const service = serviceWith(alwaysBusy, {
+      TTS_RETRY_BASE_DELAY_MS: '0',
+      TTS_MAX_ATTEMPTS: '3',
+      CHUNK_MAX_ATTEMPTS: '1',
+    });
     const { view, token } = await newJob(service, 'Salom.');
     await service.pump(view.id);
     expect((await service.getJob(view.id, token)).status).toBe('failed');
     expect((await service.getJob(view.id, token)).error?.code).toBe('tts_unavailable');
     expect(calls).toBe(3);
+  });
+
+  it('keeps a job alive through a busy provider and fails it only after the part-level limit', async () => {
+    const alwaysBusy = provider(async () => {
+      throw new TtsError('tts_unavailable', 'throttled', true);
+    });
+    const service = serviceWith(alwaysBusy, {
+      TTS_RETRY_BASE_DELAY_MS: '0',
+      TTS_MAX_ATTEMPTS: '1',
+      CHUNK_MAX_ATTEMPTS: '3',
+    });
+    const { view, token } = await newJob(service, 'Salom.');
+    await service.pump(view.id);
+    expect((await service.getJob(view.id, token)).status).toBe('processing');
+    await service.pump(view.id);
+    expect((await service.getJob(view.id, token)).status).toBe('processing');
+    await service.pump(view.id);
+    const failed = await service.getJob(view.id, token);
+    expect(failed.status).toBe('failed');
+    expect(failed.error?.code).toBe('tts_unavailable');
+  });
+
+  it('fails at once on a permanent error, even with retries left', async () => {
+    const rejected = provider(async () => {
+      throw new TtsError('tts_auth_failed', 'bad key', false);
+    });
+    const service = serviceWith(rejected, { TTS_RETRY_BASE_DELAY_MS: '0', CHUNK_MAX_ATTEMPTS: '8' });
+    const { view, token } = await newJob(service, 'Salom.');
+    await service.pump(view.id);
+    expect((await service.getJob(view.id, token)).status).toBe('failed');
   });
 
   it('maps an unexpected provider error to internal_error', async () => {
@@ -206,7 +240,7 @@ describe('synthesis failures', () => {
       calls += 1;
       return { audio: new Uint8Array(0), contentType: 'audio/wav', extension: 'wav' };
     });
-    const service = serviceWith(empty, { TTS_RETRY_BASE_DELAY_MS: '0', TTS_MAX_ATTEMPTS: '2' });
+    const service = serviceWith(empty, { TTS_RETRY_BASE_DELAY_MS: '0', TTS_MAX_ATTEMPTS: '2', CHUNK_MAX_ATTEMPTS: '1' });
     const { view, token } = await newJob(service, 'Salom.');
     await service.pump(view.id);
     expect((await service.getJob(view.id, token)).status).toBe('failed');

@@ -40,6 +40,8 @@ export interface Settings {
   chunksPerPass: number;
   ttsConcurrency: number;
   ttsMaxAttempts: number;
+  /** Passes over one part before a transient failure becomes final. */
+  chunkMaxAttempts: number;
   ttsRetryBaseDelayMs: number;
   ttsTimeoutMs: number;
   passBudgetMs: number;
@@ -112,6 +114,7 @@ export function resolveSettings(env: Env): Settings {
     chunksPerPass: intFrom(env.CHUNKS_PER_PASS, 8, 1, 200),
     ttsConcurrency: intFrom(env.TTS_CONCURRENCY, 3, 1, 10),
     ttsMaxAttempts: intFrom(env.TTS_MAX_ATTEMPTS, 3, 1, 10),
+    chunkMaxAttempts: intFrom(env.CHUNK_MAX_ATTEMPTS, 8, 1, 50),
     ttsRetryBaseDelayMs: intFrom(env.TTS_RETRY_BASE_DELAY_MS, 1_000, 0, 30_000),
     ttsTimeoutMs: intFrom(env.TTS_TIMEOUT_MS, 30_000, 1_000, 120_000),
     passBudgetMs: intFrom(env.PASS_BUDGET_MS, 20_000, 1_000, 120_000),
