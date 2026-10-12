@@ -111,23 +111,49 @@ describe('VoiceCommandService: lifecycle', () => {
     expect(recognizer.starts).toHaveLength(1);
   });
 
-  it('reports an error when the automatic restart fails', async () => {
-    const { service, recognizer } = setup();
+  it('retries after an automatic restart fails, then reports an error when retries run out', async () => {
+    const { service, recognizer } = setup({ maxRetries: 1, retryDelayMs: 0 });
     await service.start();
-    recognizer.failNextStart = 'Recognizer busy.';
+    const original = recognizer.start.bind(recognizer);
+    recognizer.start = async () => {
+      throw new Error('Recognizer busy.');
+    };
     recognizer.emitStopped();
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setTimeout(resolve, 10));
     expect(service.getSnapshot()).toMatchObject({ status: 'error', message: 'Recognizer busy.' });
+    recognizer.start = original;
   });
 
-  it('reports an engine error and stops restarting', async () => {
-    const { service, recognizer } = setup();
+  it('recovers from a single engine error without the user restarting voice control', async () => {
+    const { service, recognizer } = setup({ retryDelayMs: 0 });
     await service.start();
     recognizer.emitError('Audio device lost.');
+    expect(service.getSnapshot().status).toBe('starting');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(recognizer.starts).toHaveLength(2);
+    expect(service.getSnapshot().status).toBe('listening');
+    recognizer.emitResult('next');
+    expect(service.getSnapshot().lastCommand).toBe('next');
+  });
+
+  it('stops retrying after repeated engine errors and reports the last one', async () => {
+    const { service, recognizer } = setup({ maxRetries: 2, retryDelayMs: 0 });
+    await service.start();
+    for (let i = 0; i < 3; i += 1) {
+      recognizer.emitError('Audio device lost.');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
     expect(service.getSnapshot()).toMatchObject({ status: 'error', message: 'Audio device lost.' });
-    recognizer.emitStopped();
-    await new Promise((resolve) => setImmediate(resolve));
+  });
+
+  it('does not restart after an engine error once the user turned voice off', async () => {
+    const { service, recognizer } = setup({ retryDelayMs: 0 });
+    await service.start();
+    recognizer.emitError('Audio device lost.');
+    await service.stop();
+    await new Promise((resolve) => setTimeout(resolve, 10));
     expect(recognizer.starts).toHaveLength(1);
+    expect(service.getSnapshot().status).toBe('off');
   });
 
   it('notifies subscribers and stops after unsubscribe', async () => {
@@ -201,5 +227,41 @@ describe('VoiceCommandService: accepting commands', () => {
     await service.start();
     expect(service.handleResult('resume')).toBe('resume');
     expect(service.handleResult('resume')).toBeNull();
+  });
+});
+
+describe('VoiceCommandService: last heard indicator state', () => {
+  it('sets lastHeard as accepted when a command runs', async () => {
+    const { service, recognizer } = setup();
+    await service.start();
+    recognizer.emitResult('pause');
+    expect(service.getSnapshot().lastHeard).toMatchObject({ command: 'pause', accepted: true });
+  });
+
+  it('marks a command heard during cooldown as not accepted', async () => {
+    const { service, recognizer, advance } = setup();
+    await service.start();
+    recognizer.emitResult('next');
+    advance(300);
+    recognizer.emitResult('pause');
+    expect(service.getSnapshot().lastHeard).toMatchObject({ command: 'pause', accepted: false });
+    expect(service.getSnapshot().lastCommand).toBe('next');
+  });
+
+  it('keeps lastHeard unchanged when the same command is repeated during cooldown', async () => {
+    const { service, recognizer, advance } = setup();
+    await service.start();
+    recognizer.emitResult('next');
+    const first = service.getSnapshot().lastHeard;
+    advance(300);
+    recognizer.emitResult('next');
+    expect(service.getSnapshot().lastHeard).toBe(first);
+  });
+
+  it('does not change lastHeard for results that are not commands', async () => {
+    const { service, recognizer } = setup();
+    await service.start();
+    recognizer.emitResult('[unk]');
+    expect(service.getSnapshot().lastHeard ?? null).toBeNull();
   });
 });

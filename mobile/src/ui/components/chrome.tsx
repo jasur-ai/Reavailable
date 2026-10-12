@@ -3,10 +3,9 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { StringKey } from '../../i18n';
-import type { VoiceCommand } from '../../core/voice/commands';
-import type { VoiceStatus } from '../../core/voice/voiceService';
+import type { LastHeard } from '../../core/voice/voiceService';
 import { colors, elevation, radius, spacing, TOUCH_TARGET, typography } from '../theme';
 import { useTranslate } from '../TranslateContext';
 
@@ -44,81 +43,42 @@ export function TabBar({ active, onSelect }: { active: MainTab; onSelect: (tab: 
   );
 }
 
-/** How long a recognised command stays on screen. */
-const COMMAND_FLASH_MS = 2_200;
+/** How long the heard-command pill stays on screen. */
+const HEARD_FLASH_MS = 2_000;
 
 /**
- * A pill at the top of the screen that shows voice control is listening, and flashes the command
- * that was just recognised. It never takes touches, so it cannot block the controls below.
+ * A pill at the top of the screen that appears only when the recognizer hears a command word, and
+ * says whether it was carried out. Nothing is shown while the app is merely listening, so the screen
+ * stays still. It never takes touches, so it cannot block the controls below.
  */
-export function VoiceIndicator({
-  status,
-  lastCommand,
-  lastCommandAt,
-  top,
-}: {
-  status: VoiceStatus;
-  lastCommand: VoiceCommand | null;
-  lastCommandAt: number | null;
-  top: number;
-}) {
+export function VoiceIndicator({ lastHeard, top }: { lastHeard: LastHeard | null | undefined; top: number }) {
   const t = useTranslate();
-  const listening = status === 'listening' || status === 'starting';
-  const [flash, setFlash] = useState<VoiceCommand | null>(null);
-  const [pulse] = useState(() => new Animated.Value(0));
+  const [shown, setShown] = useState<LastHeard | null>(null);
 
   useEffect(() => {
-    if (!lastCommand || lastCommandAt === null) {
+    if (!lastHeard) {
       return undefined;
     }
-    // Scheduled rather than set inline, so the flash starts after this render has committed.
-    const show = setTimeout(() => setFlash(lastCommand), 0);
-    const hide = setTimeout(() => setFlash(null), COMMAND_FLASH_MS);
+    // Scheduled rather than set inline, so the pill appears after this render has committed.
+    const show = setTimeout(() => setShown(lastHeard), 0);
+    const hide = setTimeout(() => setShown(null), HEARD_FLASH_MS);
     return () => {
       clearTimeout(show);
       clearTimeout(hide);
     };
-  }, [lastCommand, lastCommandAt]);
+  }, [lastHeard]);
 
-  useEffect(() => {
-    if (!listening) {
-      return undefined;
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [listening, pulse]);
-
-  if (!listening && !flash) {
+  if (!shown) {
     return null;
   }
 
-  const text = flash
-    ? t('voiceIndicator.heard', { command: t(`voiceCommand.${flash}` as StringKey) })
-    : t('voiceIndicator.listening');
+  const command = t(`voiceCommand.${shown.command}` as StringKey);
+  const text = shown.accepted ? t('voiceIndicator.done', { command }) : t('voiceIndicator.heard', { command });
 
   return (
     <View pointerEvents="none" accessibilityLiveRegion="polite" style={[styles.indicatorWrap, { top }]}>
-      <View style={[styles.indicator, flash ? styles.indicatorHeard : null]}>
-        <Animated.View
-          style={[
-            styles.dot,
-            flash ? styles.dotHeard : null,
-            {
-              opacity: listening ? pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }) : 1,
-              transform: [
-                {
-                  scale: listening ? pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] }) : 1,
-                },
-              ],
-            },
-          ]}
-        />
+      <View style={[styles.indicator, shown.accepted ? styles.indicatorDone : null]}>
+        <View style={[styles.dot, shown.accepted ? styles.dotDone : null]} />
         <Text style={styles.indicatorText}>{text}</Text>
       </View>
     </View>
@@ -162,8 +122,8 @@ const styles = StyleSheet.create({
     maxWidth: '90%',
     ...elevation.raised,
   },
-  indicatorHeard: { backgroundColor: colors.primary },
-  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#7FE0C2' },
-  dotHeard: { backgroundColor: colors.surface },
+  indicatorDone: { backgroundColor: colors.primary },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent },
+  dotDone: { backgroundColor: '#7FE0C2' },
   indicatorText: { ...typography.small, color: colors.primaryText, fontWeight: '600', flexShrink: 1 },
 });

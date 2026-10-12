@@ -220,12 +220,7 @@ export function AppRoot() {
       <TranslateProvider value={t}>
         {screen}
         {mainTab ? <TabBar active={mainTab} onSelect={selectTab} /> : null}
-        <VoiceIndicator
-          status={voice.status}
-          lastCommand={voice.lastCommand}
-          lastCommandAt={voice.lastCommandAt}
-          top={insets.top + spacing.sm}
-        />
+        <VoiceIndicator lastHeard={voice.lastHeard} top={insets.top + spacing.sm} />
       </TranslateProvider>
     </View>
   );

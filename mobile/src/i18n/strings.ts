@@ -486,7 +486,8 @@ export const STRINGS = {
 
   // ---------------------------------------------------------------- voice command indicator
   'voiceIndicator.listening': { uz: 'Ovozli buyruq tinglanmoqda', en: 'Listening for voice commands' },
-  'voiceIndicator.heard': { uz: 'Qabul qilindi: {command}', en: 'Heard: {command}' },
+  'voiceIndicator.heard': { uz: 'Eshitildi: {command}', en: 'Heard: {command}' },
+  'voiceIndicator.done': { uz: 'Bajarildi: {command}', en: 'Done: {command}' },
   'voiceCommand.start': { uz: 'Boshlash', en: 'Start' },
   'voiceCommand.previous': { uz: 'Oldingi', en: 'Previous' },
   'voiceCommand.next': { uz: 'Keyingi', en: 'Next' },

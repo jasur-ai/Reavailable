@@ -1,11 +1,15 @@
 /**
- * Voice command service: owns the recognizer lifecycle and turns final results into commands.
+ * Voice command service: owns the recognizer lifecycle and turns recognizer results into commands.
  *
  * Protections against false triggers:
  * - closed grammar (see commands.ts), single-word results only, [unk] rejected;
  * - minimum confidence when the engine reports one;
  * - cooldown: after a command is accepted, further results are ignored for `cooldownMs`, so one
  *   utterance cannot fire twice and speaker echo has less chance to repeat a command.
+ *
+ * Resilience: an engine error or an engine that stops by itself is retried a few times with a short
+ * delay. A single hiccup (for example, the microphone being taken for a moment while playback
+ * starts) must not silently disable voice control until the user switches it off and on again.
  */
 
 import { type VoiceCommand, VOICE_GRAMMAR, parseCommand } from './commands';
@@ -28,10 +32,21 @@ export interface SpeechRecognizerPort {
 
 export type VoiceStatus = 'off' | 'starting' | 'listening' | 'unavailable' | 'error';
 
+/** The last command word the recognizer heard, and whether it was carried out. */
+export interface LastHeard {
+  command: VoiceCommand;
+  at: number;
+  accepted: boolean;
+}
+
 export interface VoiceServiceOptions {
   cooldownMs: number;
   minConfidence: number;
   now: () => number;
+  /** How many engine failures in a row are retried before voice control gives up. */
+  maxRetries: number;
+  /** Delay before a retry; it grows with each failure in a row. */
+  retryDelayMs: number;
 }
 
 export interface VoiceSnapshot {
@@ -40,19 +55,24 @@ export interface VoiceSnapshot {
   lastCommand: VoiceCommand | null;
   /** Epoch milliseconds of the last accepted command, so the UI can flash each one. */
   lastCommandAt: number | null;
+  /** Set whenever a command word is heard, accepted or not. Drives the on-screen indicator. */
+  lastHeard?: LastHeard | null;
 }
 
 const DEFAULT_OPTIONS: VoiceServiceOptions = {
   cooldownMs: 1_500,
   minConfidence: 0.5,
   now: () => Date.now(),
+  maxRetries: 3,
+  retryDelayMs: 1_000,
 };
 
 export class VoiceCommandService {
   private readonly options: VoiceServiceOptions;
-  private snapshot: VoiceSnapshot = { status: 'off', message: null, lastCommand: null, lastCommandAt: null };
+  private snapshot: VoiceSnapshot = { status: 'off', message: null, lastCommand: null, lastCommandAt: null, lastHeard: null };
   private wanted = false;
   private lastAcceptedAt = Number.NEGATIVE_INFINITY;
+  private failuresInRow = 0;
   private readonly listeners = new Set<() => void>();
   private readonly unsubscribes: (() => void)[];
 
@@ -74,7 +94,7 @@ export class VoiceCommandService {
           ]
         : []),
       recognizer.onError((message) => {
-        this.fail(message);
+        this.recover(message);
       }),
       recognizer.onStopped(() => {
         if (this.wanted) {
@@ -108,6 +128,7 @@ export class VoiceCommandService {
       return;
     }
     this.wanted = true;
+    this.failuresInRow = 0;
     if (this.snapshot.status === 'listening' || this.snapshot.status === 'starting') {
       return;
     }
@@ -134,21 +155,30 @@ export class VoiceCommandService {
     }
   }
 
-  /** Handles one final recognizer result. Returns the accepted command, or null if it was ignored. */
+  /**
+   * Handles one recognizer result (partial or final). Returns the accepted command, or null when the
+   * result is not a command or was ignored.
+   */
   handleResult(raw: string): VoiceCommand | null {
     if (this.snapshot.status !== 'listening') {
       return null;
     }
+    // The recognizer is clearly working, so earlier failures no longer count against it.
+    this.failuresInRow = 0;
     const command = parseCommand(raw, this.options.minConfidence);
     if (command === null) {
       return null;
     }
     const now = this.options.now();
     if (now - this.lastAcceptedAt < this.options.cooldownMs) {
+      // The same utterance seen again (partial, then final). Do not flash it twice.
+      if (this.snapshot.lastHeard?.command !== command) {
+        this.set({ lastHeard: { command, at: now, accepted: false } });
+      }
       return null;
     }
     this.lastAcceptedAt = now;
-    this.set({ lastCommand: command, lastCommandAt: now });
+    this.set({ lastCommand: command, lastCommandAt: now, lastHeard: { command, at: now, accepted: true } });
     this.dispatch(command);
     return command;
   }
@@ -165,11 +195,32 @@ export class VoiceCommandService {
       return;
     }
     try {
+      // Stop first: the engine refuses to start while its previous session is still open.
+      await this.recognizer.stop().catch(() => undefined);
       await this.recognizer.start(VOICE_GRAMMAR);
-      this.set({ status: 'listening', message: null });
+      if (this.wanted) {
+        this.set({ status: 'listening', message: null });
+      }
     } catch (error) {
-      this.fail(error instanceof Error ? error.message : 'Voice control stopped.');
+      this.recover(error instanceof Error ? error.message : 'Voice control stopped.');
     }
+  }
+
+  /** An engine error: retry a few times with a growing delay, then report it. */
+  private recover(message: string): void {
+    if (!this.wanted) {
+      return;
+    }
+    this.failuresInRow += 1;
+    if (this.failuresInRow > this.options.maxRetries) {
+      this.fail(message);
+      return;
+    }
+    this.set({ status: 'starting', message: null });
+    const delay = this.options.retryDelayMs * this.failuresInRow;
+    setTimeout(() => {
+      void this.restart();
+    }, delay);
   }
 
   private fail(message: string): void {
