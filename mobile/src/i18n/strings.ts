@@ -505,6 +505,9 @@ export const STRINGS = {
     uz: 'Yangi versiya tayyor: {version}. Kitoblaringiz saqlanib qoladi.',
     en: 'New version ready: {version}. Your books are kept.',
   },
+  'update.progress': { uz: "Yuklanmoqda: {received} / {total} MB", en: 'Downloading: {received} / {total} MB' },
+  'update.progressUnknown': { uz: "Yuklanmoqda: {received} MB", en: 'Downloading: {received} MB' },
+  'update.retry': { uz: 'Qayta urinish', en: 'Try again' },
   'update.install': { uz: 'Yangilash', en: 'Update' },
   'update.downloading': { uz: 'Yuklanmoqda…', en: 'Downloading…' },
   'update.installHint': {

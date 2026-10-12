@@ -10,6 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { BUTTON_HEIGHT, colors, elevation, radius, spacing, TOUCH_TARGET, typography } from '../theme';
+import { useTranslate } from '../TranslateContext';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
@@ -219,6 +220,25 @@ export function ProgressBar({ value, total, label }: { value: number; total: num
       style={styles.progressTrack}
     >
       <View style={[styles.progressFill, { width: `${Math.round(ratio * 100)}%` }]} />
+    </View>
+  );
+}
+
+const MEGABYTE = 1024 * 1024;
+
+/** Download progress as "20.0 MB / 30.0 MB" with a bar; only the amount when the total is unknown. */
+export function DownloadProgress({ received, total }: { received: number; total: number }) {
+  const t = useTranslate();
+  const receivedMb = (received / MEGABYTE).toFixed(1);
+  if (total <= 0) {
+    return <Text style={typography.small}>{t('update.progressUnknown', { received: receivedMb })}</Text>;
+  }
+  const totalMb = (total / MEGABYTE).toFixed(1);
+  const label = t('update.progress', { received: receivedMb, total: totalMb });
+  return (
+    <View style={{ gap: spacing.xs }}>
+      <Text style={typography.small}>{label}</Text>
+      <ProgressBar value={received} total={total} label={label} />
     </View>
   );
 }

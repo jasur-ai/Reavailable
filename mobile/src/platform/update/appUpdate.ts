@@ -72,7 +72,10 @@ export async function checkForUpdate(): Promise<UpdateManifest | null> {
  * Downloads the APK for this device and opens the system installer. Throws with a short reason
  * when no APK fits the device or the download fails.
  */
-export async function installUpdate(manifest: UpdateManifest): Promise<void> {
+export async function installUpdate(
+  manifest: UpdateManifest,
+  onProgress?: (received: number, total: number) => void,
+): Promise<void> {
   const choice = apkForDevice(manifest, Device.supportedCpuArchitectures ?? []);
   if (!choice) {
     throw new Error('no-apk');
@@ -84,7 +87,9 @@ export async function installUpdate(manifest: UpdateManifest): Promise<void> {
     folder.delete();
   }
   folder.create({ idempotent: true, intermediates: true });
-  const file = await File.downloadFileAsync(choice.apk.url, folder);
+  const file = await File.downloadFileAsync(choice.apk.url, folder, {
+    onProgress: (progress) => onProgress?.(progress.bytesWritten, progress.totalBytes),
+  });
   const contentUri = await getContentUriAsync(file.uri);
   await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
     data: contentUri,

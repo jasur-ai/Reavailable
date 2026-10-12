@@ -8,7 +8,7 @@ export type UpdateState =
   | { status: 'checking' }
   | { status: 'upToDate' }
   | { status: 'available'; manifest: UpdateManifest }
-  | { status: 'downloading'; manifest: UpdateManifest }
+  | { status: 'downloading'; manifest: UpdateManifest; received: number; total: number }
   | { status: 'noApk'; manifest: UpdateManifest }
   | { status: 'failed'; manifest: UpdateManifest | null };
 
@@ -63,9 +63,11 @@ export function useAppUpdate(): AppUpdate {
       return;
     }
     busy.current = true;
-    setState({ status: 'downloading', manifest });
+    setState({ status: 'downloading', manifest, received: 0, total: 0 });
     try {
-      await installUpdate(manifest);
+      await installUpdate(manifest, (received, total) => {
+        setState({ status: 'downloading', manifest, received, total });
+      });
       setState({ status: 'available', manifest });
     } catch (error) {
       const noApk = error instanceof Error && error.message === 'no-apk';

@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'r
 import type { UpdateState } from '../../app/useAppUpdate';
 import { installedVersion } from '../../platform/update/appUpdate';
 import type { Language } from '../../core/types';
-import { Button, Card, Field, Notice, Segmented } from '../components/common';
+import { Button, Card, DownloadProgress, Field, Notice, Segmented } from '../components/common';
 import { colors, spacing, typography } from '../theme';
 import { useTranslate } from '../TranslateContext';
 
@@ -200,12 +200,16 @@ function UpdateCard({
     message = t('update.noApk');
     tone = 'danger';
   } else if (state.status === 'failed') {
+    // The failed state keeps the manifest when there was one, so the user can simply try again.
     message = t('update.failed');
     tone = 'danger';
   }
 
   const busy = state.status === 'checking' || state.status === 'downloading';
-  const offerInstall = state.status === 'available' || state.status === 'downloading' || state.status === 'noApk';
+  const offerInstall =
+    state.status === 'available' || state.status === 'downloading' || state.status === 'noApk' || (state.status === 'failed' && state.manifest !== null);
+  const installLabel =
+    state.status === 'downloading' ? t('update.downloading') : state.status === 'failed' ? t('update.retry') : t('update.install');
 
   return (
     <Card>
@@ -215,9 +219,13 @@ function UpdateCard({
       {state.status === 'checking' ? <ActivityIndicator color={colors.primary} /> : null}
       {offerInstall ? (
         <>
-          <Text style={typography.small}>{t('update.installHint')}</Text>
+          {state.status === 'downloading' ? (
+            <DownloadProgress received={state.received} total={state.total} />
+          ) : (
+            <Text style={typography.small}>{t('update.installHint')}</Text>
+          )}
           <Button
-            label={state.status === 'downloading' ? t('update.downloading') : t('update.install')}
+            label={installLabel}
             onPress={onInstall}
             busy={state.status === 'downloading'}
           />

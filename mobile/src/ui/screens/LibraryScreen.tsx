@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Alert, FlatList, Image, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import type { BookRecord } from '../../core/types';
 import { bookStatusView, voiceLabel, type Tone } from '../presentation';
-import { Badge, Button, Card, Notice, ProgressBar } from '../components/common';
+import { Badge, Button, Card, DownloadProgress, Notice, ProgressBar } from '../components/common';
 import type { UpdateState } from '../../app/useAppUpdate';
 import { colors, radius, spacing, typography } from '../theme';
 import { useTranslate } from '../TranslateContext';
@@ -89,18 +89,24 @@ export function LibraryScreen(props: LibraryScreenProps) {
 /** Shown only when a newer build is ready. Tapping it opens the system installer after the download. */
 function UpdateBanner({ state, onInstall }: { state: UpdateState; onInstall: () => void }) {
   const t = useTranslate();
-  if (state.status !== 'available' && state.status !== 'downloading' && state.status !== 'noApk') {
+  if (state.status !== 'available' && state.status !== 'downloading' && state.status !== 'noApk' && state.status !== 'failed') {
+    return null;
+  }
+  if (!state.manifest) {
     return null;
   }
   const version = state.manifest.versionName;
+  const downloading = state.status === 'downloading';
   return (
     <Card style={styles.banner}>
       <Text style={typography.heading}>{t('update.available', { version })}</Text>
       {state.status === 'noApk' ? <Text style={typography.small}>{t('update.noApk')}</Text> : null}
+      {state.status === 'failed' ? <Notice tone="danger">{t('update.failed')}</Notice> : null}
+      {downloading ? <DownloadProgress received={state.received} total={state.total} /> : null}
       <Button
-        label={state.status === 'downloading' ? t('update.downloading') : t('update.bannerAction')}
+        label={downloading ? t('update.downloading') : state.status === 'failed' ? t('update.retry') : t('update.bannerAction')}
         onPress={onInstall}
-        busy={state.status === 'downloading'}
+        busy={downloading}
       />
     </Card>
   );
